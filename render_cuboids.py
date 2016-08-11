@@ -5,6 +5,16 @@ from OpenGL.GLU import *
 import numpy as np
 import matplotlib.image as mpimg
 import sys
+import argparse
+
+parser = argparse.ArgumentParser(description='This program generates a colored cuboid dataset.')
+parser.add_argument("-w", "--width", type=int, help="Number of different widths values.", default=5)
+parser.add_argument("-he", "--height", type=int, help="Number of different height values.", default=5)
+parser.add_argument("-d", "--depth", type=int, help="Number of different depth values.", default=5)
+parser.add_argument("-p", "--phi", type=int, help="Number of different vertical camera angles.", default=5)
+parser.add_argument("-t", "--theta", type=int, help="Number of different horizontal camera angles.", default=5)
+parser.add_argument("-c", "--colors", type=int, help="Number of different random color combinations.", default=5)
+parser.add_argument("-s", "--size", type=int, help="Image size (it is a square image).", default=64)
 
 
 class Cube:
@@ -99,7 +109,6 @@ class Camera:
         glLoadIdentity()
         gluLookAt(px, py, pz, 0, 0, 0, 0, 1, 0)
 
-
 MAX_COORD = 5
 SCREEN_SIZE = 128
 THETA_STEPS = 5
@@ -167,6 +176,17 @@ def update():
 
 
 if __name__ == '__main__':
+
+    args = parser.parse_args()
+
+    SCREEN_SIZE = args.size
+    WIDTH_STEPS = args.width
+    HEIGHT_STEPS = args.height
+    DEPTH_STEPS = args.depth
+    PHI_STEPS = args.phi
+    THETA_STEPS = args.theta
+    COLOR_STEPS = args.colors
+
     glutInit()
     glutInitWindowSize(SCREEN_SIZE, SCREEN_SIZE)
     glutCreateWindow("Color Cuboid")
