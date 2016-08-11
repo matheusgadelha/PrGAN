@@ -4,13 +4,17 @@ from OpenGL.GLU import *
 
 import numpy as np
 
+
 class Cube:
-    def __init__(self, w=3.0, h=3.0, d=3.0, 
-                 fcolors = [[1,0,0], [1,1,0], [1,1,1], [0,1,0], [0,0,1], [0,1,1]]):
+    def __init__(self, w=3.0, h=3.0, d=3.0, fcolors=None):
         self.width = w
         self.height = h
         self.depth = d
-        self.face_colors = fcolors
+        if fcolors is None:
+            self.face_colors = [[1, 0, 0], [1, 1, 0], [1, 1, 1],
+                                [0, 1, 0], [0, 0, 1], [0, 1, 1]]
+        else:
+            self.face_colors = fcolors
 
     @staticmethod
     def set_color(c):
@@ -20,7 +24,8 @@ class Cube:
     def set_vertex(v):
         glVertex3f(v[0], v[1], v[2])
 
-    def draw_face(self, verts):
+    @staticmethod
+    def draw_face(verts):
         Cube.set_vertex(verts[0])
         Cube.set_vertex(verts[1])
         Cube.set_vertex(verts[2])
@@ -37,75 +42,79 @@ class Cube:
 
         glBegin(GL_TRIANGLES)
 
-        #Front face
+        # Front face
         Cube.set_color(self.face_colors[0])
-        front_face_verts = [[-0.5,-0.5,-0.5], [0.5,-0.5,-0.5],
-                [0.5,0.5,-0.5], [-0.5, 0.5, -0.5]]
-        self.draw_face(front_face_verts)
+        front_face_verts = [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5],
+                            [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5]]
+        Cube.draw_face(front_face_verts)
 
-        #Right face
+        # Right face
         Cube.set_color(self.face_colors[1])
-        right_face_verts = [[0.5,-0.5,-0.5], [0.5,-0.5,0.5],
-                [0.5,0.5,0.5], [0.5, 0.5, -0.5]]
-        self.draw_face(right_face_verts)
+        right_face_verts = [[0.5, -0.5, -0.5], [0.5, -0.5, 0.5],
+                            [0.5, 0.5, 0.5], [0.5, 0.5, -0.5]]
+        Cube.draw_face(right_face_verts)
 
-        #Left face
+        # Left face
         Cube.set_color(self.face_colors[2])
-        left_face_verts = [[-0.5,-0.5,-0.5], [-0.5,-0.5,0.5],
-                [-0.5,0.5,0.5], [-0.5, 0.5, -0.5]]
-        self.draw_face(left_face_verts)
+        left_face_verts = [[-0.5, -0.5, -0.5], [-0.5, -0.5, 0.5],
+                           [-0.5, 0.5, 0.5], [-0.5, 0.5, -0.5]]
+        Cube.draw_face(left_face_verts)
 
-        #Back face
+        # Back face
         Cube.set_color(self.face_colors[3])
-        back_face_verts = [[-0.5,-0.5,0.5], [0.5,-0.5,0.5],
-                [0.5,0.5,0.5], [-0.5, 0.5, 0.5]]
-        self.draw_face(back_face_verts)
+        back_face_verts = [[-0.5, -0.5, 0.5], [0.5, -0.5, 0.5],
+                           [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]]
+        Cube.draw_face(back_face_verts)
 
-        #Top face
+        # Top face
         Cube.set_color(self.face_colors[4])
-        top_face_verts = [[-0.5,0.5,-0.5], [0.5,0.5,-0.5],
-                [0.5,0.5,0.5], [-0.5, 0.5, 0.5]]
-        self.draw_face(top_face_verts)
+        top_face_verts = [[-0.5, 0.5, -0.5], [0.5, 0.5, -0.5],
+                          [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]]
+        Cube.draw_face(top_face_verts)
 
-        #Bottom face
+        # Bottom face
         Cube.set_color(self.face_colors[5])
-        bottom_face_verts = [[-0.5,-0.5,-0.5], [0.5,-0.5,-0.5],
-                [0.5,-0.5,0.5], [-0.5, -0.5, 0.5]]
-        self.draw_face(bottom_face_verts)
+        bottom_face_verts = [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5],
+                             [0.5, -0.5, 0.5], [-0.5, -0.5, 0.5]]
+        Cube.draw_face(bottom_face_verts)
 
         glEnd()
         glPopMatrix()
 
-class Camera:
 
+class Camera:
     def __init__(self, t=0, p=0.5, r=5.0):
-        self.theta = t 
-        self.phi = p 
+        self.theta = t
+        self.phi = p
         self.radius = r
 
     def place(self):
-        px = self.radius*np.cos(self.theta)*np.cos(self.phi);
-        py = self.radius*np.sin(self.phi)
-        pz = self.radius*np.sin(self.theta)*np.cos(self.phi);
+        px = self.radius * np.cos(self.theta) * np.cos(self.phi);
+        py = self.radius * np.sin(self.phi)
+        pz = self.radius * np.sin(self.theta) * np.cos(self.phi);
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         gluLookAt(px, py, pz, 0, 0, 0, 0, 1, 0)
 
+
 SCREEN_SIZE = 5
+
 
 def init():
     glEnable(GL_DEPTH_TEST)
     glDepthFunc(GL_LESS)
-    glClearColor(0.0,0.0,0.0,0.0)
+    glClearColor(0.0, 0.0, 0.0, 0.0)
     glClearDepth(1.0)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     glOrtho(-SCREEN_SIZE, SCREEN_SIZE, -SCREEN_SIZE, SCREEN_SIZE,
             0.1, 1000.0)
 
+
 cube = Cube()
 camera = Camera()
+
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -114,12 +123,14 @@ def display():
     cube.draw()
     glutSwapBuffers()
 
+
 def update():
     display()
 
+
 if __name__ == '__main__':
     glutInit()
-    glutInitWindowSize(640,640)
+    glutInitWindowSize(640, 640)
     glutCreateWindow("Color Cuboid")
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutDisplayFunc(display)
