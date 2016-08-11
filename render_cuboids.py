@@ -4,6 +4,7 @@ from OpenGL.GLU import *
 
 import numpy as np
 import matplotlib.image as mpimg
+import sys
 
 
 class Cube:
@@ -90,9 +91,9 @@ class Camera:
         self.radius = r
 
     def place(self):
-        px = self.radius * np.cos(self.theta) * np.cos(self.phi);
+        px = self.radius * np.cos(self.theta) * np.cos(self.phi)
         py = self.radius * np.sin(self.phi)
-        pz = self.radius * np.sin(self.theta) * np.cos(self.phi);
+        pz = self.radius * np.sin(self.theta) * np.cos(self.phi)
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -101,8 +102,12 @@ class Camera:
 
 MAX_COORD = 5
 SCREEN_SIZE = 128
-THETA_STEPS = 50
-PHI_STEPS = 10
+THETA_STEPS = 5
+PHI_STEPS = 5
+WIDTH_STEPS = 5
+HEIGHT_STEPS = 5
+DEPTH_STEPS = 5
+COLOR_STEPS = 5
 
 
 def init():
@@ -128,16 +133,37 @@ def display():
 
 
 def update():
-    for p in np.linspace(-np.pi/2.0, np.pi/2.0, PHI_STEPS):
-        camera.phi = p
-        for t in np.linspace(0, 2*np.pi, THETA_STEPS):
-            buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
-            buffer_data = np.array(buffer_data)
-            img_filename = "cuboid"+"_"+str(t)+"_"+str(p)+".png"
-            mpimg.imsave(os.path.join("data", img_filename), buffer_data)
-            camera.theta = t
-            display()
-    print "Dataset created."
+    img_id = 0
+    img_params = np.zeros((WIDTH_STEPS*HEIGHT_STEPS*DEPTH_STEPS*PHI_STEPS*THETA_STEPS * COLOR_STEPS,
+                          23)) # width + height + depth + phi + theta + 18 [6 colors, 3 floats each]
+    print "Rendering dataset..."
+    for c in range(COLOR_STEPS):
+        random_colors = np.random.rand(6, 3)
+        cube.face_colors = random_colors
+        for w in np.linspace(1.0, 6.0, WIDTH_STEPS):
+            cube.width = w
+            for h in np.linspace(1.0, 6.0, HEIGHT_STEPS):
+                cube.height = h
+                for d in np.linspace(1.0, 6.0, DEPTH_STEPS):
+                    cube.depth = d
+                    for p in np.linspace(-np.pi/2.0, np.pi/2.0, PHI_STEPS):
+                        camera.phi = p
+                        for t in np.linspace(0, 2*np.pi, THETA_STEPS):
+                            camera.theta = t
+
+                            buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
+                            buffer_data = np.array(buffer_data)
+                            img_filename = "cuboid"+"_"+str(img_id)+".png"
+                            mpimg.imsave(os.path.join("data", img_filename), buffer_data)
+                            display()
+
+                            img_params[img_id, 0:5] = np.array([w, h, d, p, t])
+                            img_params[img_id, 5:23] = random_colors.flatten()
+                            img_id += 1
+
+    np.save("data_params.npy", img_params)
+    print "Done."
+    sys.exit()
 
 
 if __name__ == '__main__':
@@ -149,5 +175,7 @@ if __name__ == '__main__':
     glutIdleFunc(update)
     init()
     if not os.path.exists("data"):
+        print "Data folder not found. Creating one..."
         os.makedirs("data")
+        print "Done."
     glutMainLoop()
