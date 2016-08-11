@@ -3,6 +3,8 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
 import numpy as np
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 
 
 class Cube:
@@ -98,7 +100,10 @@ class Camera:
         gluLookAt(px, py, pz, 0, 0, 0, 0, 1, 0)
 
 
-SCREEN_SIZE = 5
+MAX_COORD = 5
+SCREEN_SIZE = 128
+THETA_STEPS = 50
+PHI_STEPS = 10
 
 
 def init():
@@ -108,7 +113,7 @@ def init():
     glClearDepth(1.0)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glOrtho(-SCREEN_SIZE, SCREEN_SIZE, -SCREEN_SIZE, SCREEN_SIZE,
+    glOrtho(-MAX_COORD, MAX_COORD, -MAX_COORD, MAX_COORD,
             0.1, 1000.0)
 
 
@@ -118,19 +123,26 @@ camera = Camera()
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    camera.theta += 0.0001
     camera.place()
     cube.draw()
     glutSwapBuffers()
 
 
 def update():
-    display()
+    for p in np.linspace(-np.pi/2.0, np.pi/2.0, PHI_STEPS):
+        camera.phi = p
+        for t in np.linspace(0, 2*np.pi, THETA_STEPS):
+            buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
+            buffer_data = np.array(buffer_data)
+            img_filename = "cuboid"+"_"+str(t)+"_"+str(p)+".png"
+            mpimg.imsave(os.path.join("data", img_filename), buffer_data)
+            camera.theta = t
+            display()
 
 
 if __name__ == '__main__':
     glutInit()
-    glutInitWindowSize(640, 640)
+    glutInitWindowSize(SCREEN_SIZE, SCREEN_SIZE)
     glutCreateWindow("Color Cuboid")
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutDisplayFunc(display)
