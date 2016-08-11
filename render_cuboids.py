@@ -137,6 +137,7 @@ def update():
             mpimg.imsave(os.path.join("data", img_filename), buffer_data)
             camera.theta = t
             display()
+    print "Dataset created."
 
 
 if __name__ == '__main__':
@@ -147,4 +148,6 @@ if __name__ == '__main__':
     glutDisplayFunc(display)
     glutIdleFunc(update)
     init()
+    if not os.path.exists("data"):
+        os.makedirs("data")
     glutMainLoop()
