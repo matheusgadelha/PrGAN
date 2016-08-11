@@ -160,11 +160,12 @@ def update():
                         for t in np.linspace(0, 2*np.pi, THETA_STEPS):
                             camera.theta = t
 
+                            display()
+
                             buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
                             buffer_data = np.array(buffer_data)
                             img_filename = "cuboid"+"_"+str(img_id)+".png"
                             mpimg.imsave(os.path.join("data", img_filename), buffer_data)
-                            display()
 
                             img_params[img_id, 0:5] = np.array([w, h, d, p, t])
                             img_params[img_id, 5:23] = random_colors.flatten()
