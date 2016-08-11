@@ -4,7 +4,6 @@ from OpenGL.GLU import *
 
 import numpy as np
 import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 
 
 class Cube:
