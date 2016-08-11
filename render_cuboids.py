@@ -145,6 +145,8 @@ def update():
     img_id = 0
     img_params = np.zeros((WIDTH_STEPS*HEIGHT_STEPS*DEPTH_STEPS*PHI_STEPS*THETA_STEPS * COLOR_STEPS,
                           23)) # width + height + depth + phi + theta + 18 [6 colors, 3 floats each]
+    data_config = np.array([WIDTH_STEPS, HEIGHT_STEPS, DEPTH_STEPS, PHI_STEPS, THETA_STEPS, COLOR_STEPS])
+
     print "Rendering dataset..."
     for c in range(COLOR_STEPS):
         random_colors = np.random.rand(6, 3)
@@ -172,6 +174,7 @@ def update():
                             img_id += 1
 
     np.save("data_params.npy", img_params)
+    np.save("data_config.npy", data_config)
     print "Done."
     sys.exit()
 
