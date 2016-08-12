@@ -19,7 +19,7 @@ def linear(x, n_input, n_output, activation=None, scope=None):
         return h
 
 
-def l2norm(a, b): return tf.sqrt(tf.pow(a-b, 2))
+def l2norm(a, b): return tf.sqrt(tf.reduce_sum(tf.pow(a-b, 2), 1))
 
 
 def show_graph_operations():
