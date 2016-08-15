@@ -16,15 +16,15 @@ class RenderNet:
         self.batch_size = batch_size
         self.lrate = lrate
         self.session = sess
-        self.base_dim = 1024
+        self.base_dim = 512
 
         # Network architecture
         with tf.variable_scope("rendernet"):
             self.img_params = tf.placeholder(tf.float32, shape=[batch_size, self.input_size], name='input')
             self.final_image = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 3], name='final_image')
 
-            self.h1 = ops.linear(self.img_params, self.input_size, 1024, activation=tf.nn.relu, scope='h1')
-            self.h2 = tf.reshape(ops.linear(self.h1, 1024, self.base_dim * 4 * 4, activation=tf.nn.relu, scope='h2'),
+            self.h1 = ops.linear(self.img_params, self.input_size, self.base_dim, activation=tf.nn.relu, scope='h1')
+            self.h2 = tf.reshape(ops.linear(self.h1, self.base_dim, self.base_dim * 4 * 4, activation=tf.nn.relu, scope='h2'),
                                  [-1, 4, 4, self.base_dim])
             self.h3 = tf.nn.relu(ops.deconv2d(self.h2, [self.batch_size, 8, 8, self.base_dim/2], name='h3'))
             self.h4 = tf.nn.relu(ops.deconv2d(self.h3, [self.batch_size, 16, 16, self.base_dim/4], name='h4'))
@@ -86,7 +86,7 @@ class RenderNet:
 
         img = np.array(self.prediction.eval(session=self.session, feed_dict={self.img_params: render_params}))
         print img.shape
-        plt.imshow(img[63,:,:,:])
+        plt.imshow(img[60,:,:,:])
         plt.show()
         return img
 

@@ -65,7 +65,7 @@ def load_flatten_imgbatch(img_paths):
 def load_imgbatch(img_paths):
     images = []
     for path in img_paths:
-        images.append(mpimg.imread(path))
+        images.append(mpimg.imread(path)[:, :, 0:3])
     return np.array(images)
 
 
