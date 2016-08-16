@@ -16,14 +16,20 @@ class RenderNet:
         self.batch_size = batch_size
         self.lrate = lrate
         self.session = sess
-        self.base_dim = 512
+        self.base_dim = 1024
 
         # Network architecture
         with tf.variable_scope("rendernet"):
             self.img_params = tf.placeholder(tf.float32, shape=[batch_size, self.input_size], name='input')
             self.final_image = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 3], name='final_image')
 
-            self.h1 = ops.linear(self.img_params, self.input_size, self.base_dim, activation=tf.nn.relu, scope='h1')
+            self.fc_size = ops.linear(self.img_params[:, 0:3], 3, 256, activation=tf.nn.relu, scope='fc_size')
+            self.fc_view = ops.linear(self.img_params[:, 3:5], 2, 256, activation=tf.nn.relu, scope='fc_view')
+            self.fc_colors = ops.linear(self.img_params[:, 5:23], 18, 256, activation=tf.nn.relu, scope='fc_colors')
+
+            self.conc_data = tf.concat(1, [self.fc_size, self.fc_view, self.fc_colors])
+
+            self.h1 = ops.linear(self.conc_data, 768, self.base_dim, activation=tf.nn.relu, scope='h1')
             self.h2 = tf.reshape(ops.linear(self.h1, self.base_dim, self.base_dim * 4 * 4, activation=tf.nn.relu, scope='h2'),
                                  [-1, 4, 4, self.base_dim])
             self.h3 = tf.nn.relu(ops.deconv2d(self.h2, [self.batch_size, 8, 8, self.base_dim/2], name='h3'))
@@ -70,7 +76,7 @@ class RenderNet:
 
                 # ops.show_graph_operations()
                 # Save checkpoint
-                if training_step % 100 == 0:
+                if training_step % 1000 == 0:
                     if not os.path.exists("checkpoint"):
                         print "Checkpoint folder not found. Creating one..."
                         os.makedirs("checkpoint")
@@ -86,7 +92,7 @@ class RenderNet:
 
         img = np.array(self.prediction.eval(session=self.session, feed_dict={self.img_params: render_params}))
         print img.shape
-        plt.imshow(img[60,:,:,:])
+        plt.imsave("render.png", img[0,:,:,:])
         plt.show()
         return img
 
@@ -95,12 +101,21 @@ class RenderNet:
             sess.run(tf.initialize_all_variables())
         ops.show_graph_operations()
 
+test_params = np.array([5, 5, 5,
+                        0.7, 0,
+                        1, 0, 0,
+                        1, 1, 0,
+                        0, 0, 1,
+                        0, 1, 0,
+                        0, 1, 1,
+                        1, 1, 1])
 
 if __name__ == '__main__':
     rnet = RenderNet()
     #rnet.architecture_check()
-    #data = np.load("data_params.npy")[10000:10064, :]
-    rnet.train()
-    #rnet.forward(data)
+    data = np.load("data_params.npy")[0:64, :]
+    data[0] = test_params
+    #rnet.train()
+    rnet.forward(data)
 
 
