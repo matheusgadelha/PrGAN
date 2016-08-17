@@ -1,6 +1,7 @@
 import tensorflow as tf
 import matplotlib.image as mpimg
 import numpy as np
+import scipy.misc
 import re
 
 
@@ -81,3 +82,57 @@ def alphanum_key(s):
         "z23a" -> ["z", 23, "a"]
     """
     return [tryint(c) for c in re.split('([0-9]+)', s)]
+
+def save_images(images, size, image_path):
+    return imsave(inverse_transform(images), size, image_path)
+
+
+def save_image(image, image_path):
+    return scipy.misc.imsave(image_path, image[0,:,:,0])
+
+
+def imread(path):
+    return scipy.misc.imread(path).astype(np.float)
+
+
+def merge_images(images, size):
+    return inverse_transform(images)
+
+
+def merge(images, size):
+    h, w = images.shape[1], images.shape[2]
+    img = np.zeros((h * size[0], w * size[1], 3))
+
+    for idx, image in enumerate(images):
+        i = idx % size[1]
+        j = idx / size[1]
+        img[j*h:j*h+h, i*w:i*w+w, :] = image
+
+    return img
+
+
+def imsave(images, size, path):
+    return mpimg.imsave(path, merge(images, size))
+
+
+def center_crop(x, crop_h, crop_w=None, resize_w=64):
+    if crop_w is None:
+        crop_w = crop_h
+    h, w = x.shape[:2]
+    j = int(round((h - crop_h)/2.))
+    i = int(round((w - crop_w)/2.))
+    return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w],
+                               [resize_w, resize_w])
+
+
+def transform(image, npx=64, is_crop=True):
+    # npx : # of pixels width/height of image
+    if is_crop:
+        cropped_image = center_crop(image, npx)
+    else:
+        cropped_image = image
+    return np.array(cropped_image)#/127.5 - 1.
+
+
+def inverse_transform(images):
+    return images/2.

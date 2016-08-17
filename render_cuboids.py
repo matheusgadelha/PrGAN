@@ -15,6 +15,8 @@ parser.add_argument("-p", "--phi", type=int, help="Number of different vertical 
 parser.add_argument("-t", "--theta", type=int, help="Number of different horizontal camera angles.", default=5)
 parser.add_argument("-c", "--colors", type=int, help="Number of different random color combinations.", default=5)
 parser.add_argument("-s", "--size", type=int, help="Image size (it is a square image).", default=64)
+parser.add_argument("--train", dest='train', action='store_true')
+parser.set_defaults(test=False)
 
 
 class Cube:
@@ -117,6 +119,7 @@ WIDTH_STEPS = 5
 HEIGHT_STEPS = 5
 DEPTH_STEPS = 5
 COLOR_STEPS = 5
+TRAIN_SET = False
 
 
 def init():
@@ -167,14 +170,22 @@ def update():
                             buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
                             buffer_data = np.array(buffer_data)
                             img_filename = "cuboid"+"_"+str(img_id)+".png"
-                            mpimg.imsave(os.path.join("data", img_filename), buffer_data)
+                            if TRAIN_SET:
+                                mpimg.imsave(os.path.join("data", "train", img_filename), buffer_data)
+                            else:
+                                mpimg.imsave(os.path.join("data", "test", img_filename), buffer_data)
 
                             img_params[img_id, 0:5] = np.array([w, h, d, p, t])
                             img_params[img_id, 5:23] = random_colors.flatten()
                             img_id += 1
 
-    np.save("data_params.npy", img_params)
-    np.save("data_config.npy", data_config)
+    if TRAIN_SET:
+        np.save("train_params.npy", img_params)
+        np.save("train_config.npy", data_config)
+    else:
+        np.save("test_params.npy", img_params)
+        np.save("test_config.npy", data_config)
+
     print "Done."
     sys.exit()
 
@@ -190,6 +201,7 @@ if __name__ == '__main__':
     PHI_STEPS = args.phi
     THETA_STEPS = args.theta
     COLOR_STEPS = args.colors
+    TRAIN_SET = args.train
 
     glutInit()
     glutInitWindowSize(SCREEN_SIZE, SCREEN_SIZE)
@@ -202,4 +214,16 @@ if __name__ == '__main__':
         print "Data folder not found. Creating one..."
         os.makedirs("data")
         print "Done."
+
+    if TRAIN_SET:
+        if not os.path.exists(os.path.join("data", "train")):
+            print "Train folder not found. Creating one..."
+            os.makedirs(os.path.join("data", "train"))
+            print "Done."
+    else:
+        if not os.path.exists(os.path.join("data", "test")):
+            print "Test folder not found. Creating one..."
+            os.makedirs(os.path.join("data", "test"))
+            print "Done."
+
     glutMainLoop()
