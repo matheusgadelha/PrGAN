@@ -25,11 +25,11 @@ class RenderNet:
 
             self.fc_size = ops.linear(self.img_params[:, 0:3], 3, 256, activation=tf.nn.relu, scope='fc_size')
             self.fc_view = ops.linear(self.img_params[:, 3:5], 2, 256, activation=tf.nn.relu, scope='fc_view')
-            self.fc_colors = ops.linear(self.img_params[:, 5:23], 18, 256, activation=tf.nn.relu, scope='fc_colors')
+            self.fc_colors = ops.linear(self.img_params[:, 5:23], 18, 512, activation=tf.nn.relu, scope='fc_colors')
 
             self.conc_data = tf.concat(1, [self.fc_size, self.fc_view, self.fc_colors])
 
-            self.h1 = ops.linear(self.conc_data, 768, self.base_dim, activation=tf.nn.relu, scope='h1')
+            self.h1 = ops.linear(self.conc_data, 1024, self.base_dim, activation=tf.nn.relu, scope='h1')
             self.h2 = tf.reshape(ops.linear(self.h1, self.base_dim, self.base_dim * 4, activation=tf.nn.relu, scope='h2'),
                                  [-1, 4, 4, self.base_dim/4])
             self.h3 = tf.nn.relu(ops.deconv2d(self.h2, [self.batch_size, 8, 8, self.base_dim/8], name='h3'))
@@ -78,7 +78,6 @@ class RenderNet:
                 print "Epoch {}/{}, Batch {}/{}, Loss {}".format(epoch + 1, self.n_iterations,
                                                                  batch_i + 1, n_batches, current_loss)
 
-                # ops.show_graph_operations()
                 # Save checkpoint
                 if training_step % 1000 == 0:
                     if not os.path.exists("checkpoint"):
@@ -133,9 +132,7 @@ test_params = np.array([5, 5, 5,
 if __name__ == '__main__':
     rnet = RenderNet()
     #rnet.architecture_check()
-    data = np.load("data_params.npy")[0:64, :]
-    data[0] = test_params
-    #rnet.train()
-    rnet.test()
+    rnet.train()
+    #rnet.test()
 
 
