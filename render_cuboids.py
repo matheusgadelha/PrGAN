@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.image as mpimg
 import sys
 import argparse
+import ops
 
 parser = argparse.ArgumentParser(description='This program generates a colored cuboid dataset.')
 parser.add_argument("-w", "--width", type=int, help="Number of different widths values.", default=5)
@@ -146,9 +147,9 @@ def display():
 
 def update():
     img_id = 0
-    img_params = np.zeros((WIDTH_STEPS*HEIGHT_STEPS*DEPTH_STEPS*PHI_STEPS*THETA_STEPS * COLOR_STEPS,
-                          23)) # width + height + depth + phi + theta + 18 [6 colors, 3 floats each]
-    data_config = np.array([WIDTH_STEPS, HEIGHT_STEPS, DEPTH_STEPS, PHI_STEPS, THETA_STEPS, COLOR_STEPS])
+    n_images = WIDTH_STEPS*HEIGHT_STEPS*DEPTH_STEPS*PHI_STEPS*THETA_STEPS
+    img_params = np.zeros((n_images, 23))  # width + height + depth + phi + theta + 18 [6 colors, 3 floats each]
+    data_config = np.array([WIDTH_STEPS, HEIGHT_STEPS, DEPTH_STEPS, PHI_STEPS, THETA_STEPS])
 
     img_sum = np.zeros((SCREEN_SIZE, SCREEN_SIZE, 3))
 
@@ -184,6 +185,7 @@ def update():
                         img_params[img_id, 0:5] = np.array([w, h, d, p, t])
                         img_params[img_id, 5:23] = random_colors.flatten()
                         img_id += 1
+                        ops.progress(img_id, n_images)
 
     img_mean = img_sum/float(img_id)
     if TRAIN_SET:

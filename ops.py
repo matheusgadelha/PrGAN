@@ -2,6 +2,7 @@ import tensorflow as tf
 import matplotlib.image as mpimg
 import numpy as np
 import scipy.misc
+import sys
 import re
 
 
@@ -136,3 +137,14 @@ def transform(image, npx=64, is_crop=True):
 
 def inverse_transform(images):
     return images/2.
+
+
+def progress(count, total, suffix=''):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', suffix))
+    sys.stdout.flush()  # As suggested by Rom Ruben

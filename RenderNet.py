@@ -52,6 +52,8 @@ class RenderNet:
         dataset_files.sort(key=ops.alphanum_key)
         dataset_files = np.array(dataset_files)
         dataset_params = np.load("train_params.npy")
+        data_mean = np.load("train_mean.npy")
+        data_mean = data_mean[np.newaxis, :, :, :]
 
         n_files = dataset_params.shape[0]
 
@@ -67,7 +69,7 @@ class RenderNet:
 
             for batch_i in xrange(n_batches):
                 idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
-                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i])
+                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i]) - data_mean
                 self.session.run(self.optimizer, feed_dict={self.img_params: dataset_params[idxs_i, :],
                                                     self.final_image: imgs_batch})
                 training_step += 1
