@@ -136,7 +136,7 @@ def transform(image, npx=64, is_crop=True):
 
 
 def inverse_transform(images):
-    return images/2.
+    return np.clip(images, 0, 1)
 
 
 def progress(count, total, suffix=''):

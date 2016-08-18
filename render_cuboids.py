@@ -147,45 +147,45 @@ def display():
 
 def update():
     img_id = 0
-    n_images = WIDTH_STEPS*HEIGHT_STEPS*DEPTH_STEPS*PHI_STEPS*THETA_STEPS
+    n_images = WIDTH_STEPS*HEIGHT_STEPS*DEPTH_STEPS*PHI_STEPS*THETA_STEPS*COLOR_STEPS
     img_params = np.zeros((n_images, 23))  # width + height + depth + phi + theta + 18 [6 colors, 3 floats each]
-    data_config = np.array([WIDTH_STEPS, HEIGHT_STEPS, DEPTH_STEPS, PHI_STEPS, THETA_STEPS])
+    data_config = np.array([WIDTH_STEPS, HEIGHT_STEPS, DEPTH_STEPS, PHI_STEPS, THETA_STEPS, COLOR_STEPS])
 
     img_sum = np.zeros((SCREEN_SIZE, SCREEN_SIZE, 3))
 
     print "Rendering dataset..."
-    #for c in range(COLOR_STEPS):
-    #    random_colors = np.random.rand(6, 3)
-    #    cube.face_colors = random_colors
-    for w in np.linspace(1.0, 6.0, WIDTH_STEPS):
-        cube.width = w
-        for h in np.linspace(1.0, 6.0, HEIGHT_STEPS):
-            cube.height = h
-            for d in np.linspace(1.0, 6.0, DEPTH_STEPS):
-                cube.depth = d
-                for p in np.linspace(-np.pi/2.0, np.pi/2.0, PHI_STEPS):
-                    camera.phi = p
-                    for t in np.linspace(0, 2*np.pi, THETA_STEPS):
-                        camera.theta = t
+    for c in range(COLOR_STEPS):
+        random_colors = np.random.rand(6, 3)
+        cube.face_colors = random_colors
+        for w in np.linspace(1.0, 6.0, WIDTH_STEPS):
+            cube.width = w
+            for h in np.linspace(1.0, 6.0, HEIGHT_STEPS):
+                cube.height = h
+                for d in np.linspace(1.0, 6.0, DEPTH_STEPS):
+                    cube.depth = d
+                    for p in np.linspace(-np.pi/2.0, np.pi/2.0, PHI_STEPS):
+                        camera.phi = p
+                        for t in np.linspace(0, 2*np.pi, THETA_STEPS):
+                            camera.theta = t
 
-                        random_colors = np.random.rand(6, 3)
-                        cube.face_colors = random_colors
+                            #random_colors = np.random.rand(6, 3)
+                            #cube.face_colors = random_colors
 
-                        display()
+                            display()
 
-                        buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
-                        buffer_data = np.array(buffer_data)
-                        img_sum += buffer_data
-                        img_filename = "cuboid"+"_"+str(img_id)+".png"
-                        if TRAIN_SET:
-                            mpimg.imsave(os.path.join("data", "train", img_filename), buffer_data)
-                        else:
-                            mpimg.imsave(os.path.join("data", "test", img_filename), buffer_data)
+                            buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
+                            buffer_data = np.array(buffer_data)
+                            img_sum += buffer_data
+                            img_filename = "cuboid"+"_"+str(img_id)+".png"
+                            if TRAIN_SET:
+                                mpimg.imsave(os.path.join("data", "train", img_filename), buffer_data)
+                            else:
+                                mpimg.imsave(os.path.join("data", "test", img_filename), buffer_data)
 
-                        img_params[img_id, 0:5] = np.array([w, h, d, p, t])
-                        img_params[img_id, 5:23] = random_colors.flatten()
-                        img_id += 1
-                        ops.progress(img_id, n_images)
+                            img_params[img_id, 0:5] = np.array([w, h, d, p, t])
+                            img_params[img_id, 5:23] = random_colors.flatten()
+                            img_id += 1
+                            ops.progress(img_id, n_images)
 
     img_mean = img_sum/float(img_id)
     if TRAIN_SET:
@@ -220,7 +220,9 @@ if __name__ == '__main__':
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutDisplayFunc(display)
     glutIdleFunc(update)
+
     init()
+
     if not os.path.exists("data"):
         print "Data folder not found. Creating one..."
         os.makedirs("data")

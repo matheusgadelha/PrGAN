@@ -8,7 +8,7 @@ import os
 
 class RenderNet:
 
-    def __init__(self, sess=tf.Session(), image_size=(64, 64), input_size=23, n_iterations=20, batch_size=64, lrate=0.001):
+    def __init__(self, sess=tf.Session(), image_size=(64, 64), input_size=23, n_iterations=50, batch_size=64, lrate=0.001):
         self.image_size = image_size
         self.input_size = input_size
         self.n_pixels = self.image_size[0] * self.image_size[1] * 3  # number of channels
@@ -52,13 +52,13 @@ class RenderNet:
         dataset_files.sort(key=ops.alphanum_key)
         dataset_files = np.array(dataset_files)
         dataset_params = np.load("train_params.npy")
-        data_mean = np.load("train_mean.npy")
-        data_mean = data_mean[np.newaxis, :, :, :]
+        #data_mean = np.load("train_mean.npy")
+        #data_mean = data_mean[np.newaxis, :, :, :]
 
         n_files = dataset_params.shape[0]
 
         testset_idxs = np.random.choice(range(n_files), self.batch_size)
-        test_imgs = ops.load_imgbatch(dataset_files[testset_idxs])
+        test_imgs = ops.load_imgbatch(dataset_files[testset_idxs])  # - data_mean
         training_step = 0
 
         self.session.run(tf.initialize_all_variables())
@@ -69,13 +69,14 @@ class RenderNet:
 
             for batch_i in xrange(n_batches):
                 idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
-                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i]) - data_mean
+                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i])  # - data_mean
+                plt.imsave("test.png", imgs_batch[0, :, :, :])
                 self.session.run(self.optimizer, feed_dict={self.img_params: dataset_params[idxs_i, :],
-                                                    self.final_image: imgs_batch})
+                                                            self.final_image: imgs_batch})
                 training_step += 1
 
                 current_loss = self.session.run(self.loss, feed_dict={self.img_params: dataset_params[testset_idxs, :],
-                                                              self.final_image: test_imgs})
+                                                                      self.final_image: test_imgs})
 
                 print "Epoch {}/{}, Batch {}/{}, Loss {}".format(epoch + 1, self.n_iterations,
                                                                  batch_i + 1, n_batches, current_loss)
@@ -105,6 +106,8 @@ class RenderNet:
         test_files.sort(key=ops.alphanum_key)
         test_files = np.array(test_files)
         test_params = np.load("test_params.npy")
+        # data_mean = np.load("train_mean.npy")
+        # data_mean = data_mean[np.newaxis, :, :, :]
 
         n_files = test_params.shape[0]
 
@@ -134,7 +137,7 @@ test_params = np.array([5, 5, 5,
 if __name__ == '__main__':
     rnet = RenderNet()
     #rnet.architecture_check()
-    rnet.train()
-    #rnet.test()
+    #rnet.train()
+    rnet.test()
 
 
