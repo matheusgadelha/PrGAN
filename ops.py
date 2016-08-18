@@ -5,6 +5,12 @@ import scipy.misc
 import sys
 import re
 
+def lrelu(x, leak=0.2, name="lrelu"):
+    with tf.variable_scope(name):
+        f1 = 0.5 * (1 + leak)
+        f2 = 0.5 * (1 - leak)
+        return f1 * x + f2 * abs(x)
+
 
 def linear(x, n_input, n_output, activation=None, scope=None):
     with tf.variable_scope(scope or "linear"):

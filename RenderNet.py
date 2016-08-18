@@ -16,7 +16,7 @@ class RenderNet:
         self.batch_size = batch_size
         self.lrate = lrate
         self.session = sess
-        self.base_dim = 1024
+        self.base_dim = 512
 
         # Network architecture
         with tf.variable_scope("rendernet"):
@@ -29,12 +29,12 @@ class RenderNet:
 
             self.conc_data = tf.concat(1, [self.fc_size, self.fc_view, self.fc_colors])
 
-            self.h1 = ops.linear(self.conc_data, 1024, self.base_dim, activation=tf.nn.relu, scope='h1')
-            self.h2 = tf.reshape(ops.linear(self.h1, self.base_dim, self.base_dim * 4, activation=tf.nn.relu, scope='h2'),
-                                 [-1, 4, 4, self.base_dim/4])
-            self.h3 = tf.nn.relu(ops.deconv2d(self.h2, [self.batch_size, 8, 8, self.base_dim/8], name='h3'))
-            self.h4 = tf.nn.relu(ops.deconv2d(self.h3, [self.batch_size, 16, 16, self.base_dim/16], name='h4'))
-            self.h5 = tf.nn.relu(ops.deconv2d(self.h4, [self.batch_size, 32, 32, self.base_dim/32], name='h5'))
+            self.h1 = ops.linear(self.conc_data, 1024, 1024, activation=ops.lrelu, scope='h1')
+            self.h2 = tf.reshape(ops.linear(self.h1, 1024, self.base_dim*4*4, activation=ops.lrelu, scope='h2'),
+                                 [-1, 4, 4, self.base_dim])
+            self.h3 = ops.lrelu(ops.deconv2d(self.h2, [self.batch_size, 8, 8, self.base_dim/8], name='h3'))
+            self.h4 = ops.lrelu(ops.deconv2d(self.h3, [self.batch_size, 16, 16, self.base_dim/16], name='h4'))
+            self.h5 = ops.lrelu(ops.deconv2d(self.h4, [self.batch_size, 32, 32, self.base_dim/32], name='h5'))
             self.prediction = tf.nn.tanh(ops.deconv2d(self.h5, [self.batch_size, 64, 64, 3], name='prediction'))
 
             self.loss = tf.reduce_mean(ops.l2norm_sqrd(self.prediction, self.final_image))
@@ -137,7 +137,7 @@ test_params = np.array([5, 5, 5,
 if __name__ == '__main__':
     rnet = RenderNet()
     #rnet.architecture_check()
-    #rnet.train()
-    rnet.test()
+    rnet.train()
+    #rnet.test()
 
 
