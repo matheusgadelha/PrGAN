@@ -52,13 +52,11 @@ class RenderNet:
         dataset_files.sort(key=ops.alphanum_key)
         dataset_files = np.array(dataset_files)
         dataset_params = np.load("train_params.npy")
-        #data_mean = np.load("train_mean.npy")
-        #data_mean = data_mean[np.newaxis, :, :, :]
 
         n_files = dataset_params.shape[0]
 
         testset_idxs = np.random.choice(range(n_files), self.batch_size)
-        test_imgs = ops.load_imgbatch(dataset_files[testset_idxs])  # - data_mean
+        test_imgs = ops.load_imgbatch(dataset_files[testset_idxs]) 
         training_step = 0
 
         self.session.run(tf.initialize_all_variables())
@@ -69,7 +67,7 @@ class RenderNet:
 
             for batch_i in xrange(n_batches):
                 idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
-                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i])  # - data_mean
+                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i])
                 plt.imsave("test.png", imgs_batch[0, :, :, :])
                 self.session.run(self.optimizer, feed_dict={self.img_params: dataset_params[idxs_i, :],
                                                             self.final_image: imgs_batch})
@@ -106,8 +104,6 @@ class RenderNet:
         test_files.sort(key=ops.alphanum_key)
         test_files = np.array(test_files)
         test_params = np.load("test_params.npy")
-        # data_mean = np.load("train_mean.npy")
-        # data_mean = data_mean[np.newaxis, :, :, :]
 
         n_files = test_params.shape[0]
 
@@ -137,7 +133,7 @@ test_params = np.array([5, 5, 5,
 if __name__ == '__main__':
     rnet = RenderNet()
     #rnet.architecture_check()
-    rnet.train()
-    #rnet.test()
+    #rnet.train()
+    rnet.test()
 
 
