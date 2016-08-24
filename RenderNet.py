@@ -8,7 +8,8 @@ import os
 
 class RenderNet:
 
-    def __init__(self, sess=tf.Session(), image_size=(64, 64), input_size=23, n_iterations=50, batch_size=64, lrate=0.001):
+    def __init__(self, sess=tf.Session(), image_size=(64, 64),
+                 input_size=23, n_iterations=50, batch_size=64, lrate=0.001):
         self.image_size = image_size
         self.input_size = input_size
         self.n_pixels = self.image_size[0] * self.image_size[1] * 3  # number of channels
@@ -21,7 +22,8 @@ class RenderNet:
         # Network architecture
         with tf.variable_scope("rendernet"):
             self.img_params = tf.placeholder(tf.float32, shape=[batch_size, self.input_size], name='input')
-            self.final_image = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 3], name='final_image')
+            self.final_image = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 3],
+                                              name='final_image')
 
             self.fc_size = ops.linear(self.img_params[:, 0:3], 3, 256, activation=tf.nn.relu, scope='fc_size')
             self.fc_view = ops.linear(self.img_params[:, 3:5], 2, 256, activation=tf.nn.relu, scope='fc_view')
@@ -56,7 +58,7 @@ class RenderNet:
         n_files = dataset_params.shape[0]
 
         testset_idxs = np.random.choice(range(n_files), self.batch_size)
-        test_imgs = ops.load_imgbatch(dataset_files[testset_idxs]) 
+        test_imgs = ops.load_imgbatch(dataset_files[testset_idxs])
         training_step = 0
 
         self.session.run(tf.initialize_all_variables())
@@ -115,7 +117,6 @@ class RenderNet:
         result_imgs = self.forward_batch(test_params[test_idxs, :])
         ops.save_images(result_imgs, [8, 8], 'test_results.png')
 
-
     def architecture_check(self):
         with tf.Session() as sess:
             sess.run(tf.initialize_all_variables())
@@ -130,10 +131,12 @@ test_params = np.array([5, 5, 5,
                         0, 1, 1,
                         1, 1, 1])
 
-if __name__ == '__main__':
+
+def main():
     rnet = RenderNet()
-    #rnet.architecture_check()
-    #rnet.train()
+    # rnet.train()
     rnet.test()
 
 
+if __name__ == '__main__':
+    main()
