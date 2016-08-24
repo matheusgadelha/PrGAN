@@ -25,25 +25,44 @@ class RenderNet:
             self.final_image = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 3],
                                               name='final_image')
 
-            self.fc_size = ops.linear(self.img_params[:, 0:3], 3, 256, activation=tf.nn.relu, scope='fc_size')
-            self.fc_view = ops.linear(self.img_params[:, 3:5], 2, 256, activation=tf.nn.relu, scope='fc_view')
-            self.fc_colors = ops.linear(self.img_params[:, 5:23], 18, 512, activation=tf.nn.relu, scope='fc_colors')
+           # self.fc_size = ops.linear(self.img_params[:, 0:3], 3, 256, activation=tf.nn.relu, scope='fc_size')
+           # self.fc_view = ops.linear(self.img_params[:, 3:5], 2, 256, activation=tf.nn.relu, scope='fc_view')
+           # self.fc_colors = ops.linear(self.img_params[:, 5:23], 18, 512, activation=tf.nn.relu, scope='fc_colors')
 
-            self.conc_data = tf.concat(1, [self.fc_size, self.fc_view, self.fc_colors])
+           # self.conc_data = tf.concat(1, [self.fc_size, self.fc_view, self.fc_colors])
 
-            self.h1 = ops.linear(self.conc_data, 1024, 1024, activation=ops.lrelu, scope='h1')
-            self.h2 = tf.reshape(ops.linear(self.h1, 1024, self.base_dim*4*4, activation=ops.lrelu, scope='h2'),
-                                 [-1, 4, 4, self.base_dim])
-            self.h3 = ops.lrelu(ops.deconv2d(self.h2, [self.batch_size, 8, 8, self.base_dim/8], name='h3'))
-            self.h4 = ops.lrelu(ops.deconv2d(self.h3, [self.batch_size, 16, 16, self.base_dim/16], name='h4'))
-            self.h5 = ops.lrelu(ops.deconv2d(self.h4, [self.batch_size, 32, 32, self.base_dim/32], name='h5'))
-            self.prediction = tf.nn.tanh(ops.deconv2d(self.h5, [self.batch_size, 64, 64, 3], name='prediction'))
+           # self.h1 = ops.linear(self.conc_data, 1024, 1024, activation=ops.lrelu, scope='h1')
+           # self.h2 = tf.reshape(ops.linear(self.h1, 1024, self.base_dim*4*4, activation=ops.lrelu, scope='h2'),
+           #                      [-1, 4, 4, self.base_dim])
+           # self.h3 = ops.lrelu(ops.deconv2d(self.h2, [self.batch_size, 8, 8, self.base_dim/8], name='h3'))
+           # self.h4 = ops.lrelu(ops.deconv2d(self.h3, [self.batch_size, 16, 16, self.base_dim/16], name='h4'))
+           # self.h5 = ops.lrelu(ops.deconv2d(self.h4, [self.batch_size, 32, 32, self.base_dim/32], name='h5'))
+           # self.prediction = tf.nn.tanh(ops.deconv2d(self.h5, [self.batch_size, 64, 64, 3], name='prediction'))
+            self.prediction = self.render(self.img_params)
 
             self.loss = tf.reduce_mean(ops.l2norm_sqrd(self.prediction, self.final_image))
 
             self.optimizer = tf.train.AdamOptimizer(self.lrate).minimize(self.loss)
 
             self.saver = tf.train.Saver()
+
+    def render(self, img_params):
+        fc_size = ops.linear(img_params[:, 0:3], 3, 256, activation=tf.nn.relu, scope='fc_size')
+        fc_view = ops.linear(img_params[:, 3:5], 2, 256, activation=tf.nn.relu, scope='fc_view')
+        fc_colors = ops.linear(img_params[:, 5:23], 18, 512, activation=tf.nn.relu, scope='fc_colors')
+
+        conc_data = tf.concat(1, [fc_size, fc_view, fc_colors])
+
+        h1 = ops.linear(conc_data, 1024, 1024, activation=ops.lrelu, scope='h1')
+        h2 = tf.reshape(ops.linear(h1, 1024, self.base_dim*4*4, activation=ops.lrelu, scope='h2'),
+                        [-1, 4, 4, self.base_dim])
+        h3 = ops.lrelu(ops.deconv2d(h2, [self.batch_size, 8, 8, self.base_dim/8], name='h3'))
+        h4 = ops.lrelu(ops.deconv2d(h3, [self.batch_size, 16, 16, self.base_dim/16], name='h4'))
+        h5 = ops.lrelu(ops.deconv2d(h4, [self.batch_size, 32, 32, self.base_dim/32], name='h5'))
+        prediction = tf.nn.tanh(ops.deconv2d(h5, [self.batch_size, 64, 64, 3], name='prediction'))
+        return prediction
+
+
 
     def train(self):
         if not os.path.exists(os.path.join("data", "train")):
