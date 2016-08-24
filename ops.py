@@ -5,6 +5,7 @@ import scipy.misc
 import sys
 import re
 
+
 def lrelu(x, leak=0.2, name="lrelu"):
     with tf.variable_scope(name):
         f1 = 0.5 * (1 + leak)
@@ -26,6 +27,19 @@ def linear(x, n_input, n_output, activation=None, scope=None):
         if activation is not None:
             h = activation(h)
         return h
+
+
+def conv2d(input_, output_dim, k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
+           name="conv2d"):
+    with tf.variable_scope(name):
+        w = tf.get_variable('w', [k_h, k_w, input_.get_shape()[-1], output_dim],
+                            initializer=tf.truncated_normal_initializer(stddev=stddev))
+        conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding='SAME')
+
+        biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
+        conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
+
+        return conv
 
 
 # From DCGAN tensrorflow implementation
@@ -60,7 +74,8 @@ def l2norm_sqrd(a, b): return tf.reduce_sum(tf.pow(a-b, 2), 1)
 
 def show_graph_operations():
     operations = [op.name for op in tf.get_default_graph().get_operations()]
-    for o in operations: print o
+    for o in operations:
+        print o
 
 
 def load_flatten_imgbatch(img_paths):
@@ -90,12 +105,13 @@ def alphanum_key(s):
     """
     return [tryint(c) for c in re.split('([0-9]+)', s)]
 
+
 def save_images(images, size, image_path):
     return imsave(inverse_transform(images), size, image_path)
 
 
 def save_image(image, image_path):
-    return scipy.misc.imsave(image_path, image[0,:,:,0])
+    return scipy.misc.imsave(image_path, image[0, :, :, 0])
 
 
 def imread(path):
@@ -138,7 +154,7 @@ def transform(image, npx=64, is_crop=True):
         cropped_image = center_crop(image, npx)
     else:
         cropped_image = image
-    return np.array(cropped_image)#/127.5 - 1.
+    return np.array(cropped_image)
 
 
 def inverse_transform(images):
