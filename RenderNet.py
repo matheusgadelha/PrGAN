@@ -30,7 +30,10 @@ class RenderNet:
             self.optimizer = tf.train.AdamOptimizer(self.lrate).minimize(self.loss)
             self.saver = tf.train.Saver()
 
-    def render(self, img_params):
+    def render(self, img_params, reuse=False):
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
         fc_size = ops.linear(img_params[:, 0:3], 3, 256, activation=tf.nn.relu, scope='fc_size')
         fc_view = ops.linear(img_params[:, 3:5], 2, 256, activation=tf.nn.relu, scope='fc_view')
         fc_colors = ops.linear(img_params[:, 5:23], 18, 512, activation=tf.nn.relu, scope='fc_colors')
