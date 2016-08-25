@@ -17,6 +17,7 @@ parser.add_argument("-t", "--theta", type=int, help="Number of different horizon
 parser.add_argument("-c", "--colors", type=int, help="Number of different random color combinations.", default=5)
 parser.add_argument("-s", "--size", type=int, help="Image size (it is a square image).", default=64)
 parser.add_argument("--train", dest='train', action='store_true')
+parser.add_argument("--gan", dest='gan', action='store_true')
 parser.set_defaults(test=False)
 
 
@@ -121,6 +122,7 @@ HEIGHT_STEPS = 5
 DEPTH_STEPS = 5
 COLOR_STEPS = 5
 TRAIN_SET = False
+GAN_SET = False
 
 
 def init():
@@ -168,9 +170,6 @@ def update():
                         for t in np.linspace(0, 2*np.pi, THETA_STEPS):
                             camera.theta = t
 
-                            #random_colors = np.random.rand(6, 3)
-                            #cube.face_colors = random_colors
-
                             display()
 
                             buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
@@ -201,6 +200,60 @@ def update():
     sys.exit()
 
 
+def gan_update():
+    img_id = 0
+    n_images = WIDTH_STEPS*HEIGHT_STEPS*DEPTH_STEPS*PHI_STEPS*THETA_STEPS*COLOR_STEPS*2
+    img_params = np.zeros((n_images, 23))  # width + height + depth + phi + theta + 18 [6 colors, 3 floats each]
+    data_config = np.array([WIDTH_STEPS, HEIGHT_STEPS, DEPTH_STEPS, PHI_STEPS, THETA_STEPS, COLOR_STEPS])
+
+    img_sum = np.zeros((SCREEN_SIZE, SCREEN_SIZE, 3))
+    min_dim = 1.0
+    max_dim = 6.0
+
+    print "Rendering dataset..."
+    for c in range(COLOR_STEPS*2):
+        if c % 2:
+            random_colors = np.random.multivariate_normal([0.1, 0.1, 0.8], 0.2*np.eye(3, 3), 6)
+            min_dim = 3.0
+            max_dim = 6.0
+        else:
+            random_colors = np.random.multivariate_normal([0.8, 0.1, 0.1], 0.2*np.eye(3, 3), 6)
+            min_dim = 1.0
+            max_dim = 3.0
+        random_colors = np.clip(random_colors, 0, 1)
+        cube.face_colors = random_colors
+        for w in np.linspace(min_dim, max_dim, WIDTH_STEPS):
+            cube.width = w
+            for h in np.linspace(min_dim, max_dim, HEIGHT_STEPS):
+                cube.height = h
+                for d in np.linspace(min_dim, max_dim, DEPTH_STEPS):
+                    cube.depth = d
+                    for p in np.linspace(-np.pi/2.0, np.pi/2.0, PHI_STEPS):
+                        camera.phi = p
+                        for t in np.linspace(0, 2*np.pi, THETA_STEPS):
+                            camera.theta = t
+
+                            display()
+
+                            buffer_data = glReadPixels(0, 0, SCREEN_SIZE, SCREEN_SIZE, GL_RGB, GL_FLOAT)
+                            buffer_data = np.array(buffer_data)
+                            img_sum += buffer_data
+
+                            img_filename = "cuboid"+"_"+str(img_id)+".png"
+                            mpimg.imsave(os.path.join("data", "gan", img_filename), buffer_data)
+
+                            img_params[img_id, 0:5] = np.array([w, h, d, p, t])
+                            img_params[img_id, 5:23] = random_colors.flatten()
+                            img_id += 1
+                            ops.progress(img_id, n_images)
+
+    np.save("gan_params.npy", img_params)
+    np.save("gan_config.npy", data_config)
+    np.save("gan_mean.npy", img_mean)
+    print "Done."
+    sys.exit()
+
+
 if __name__ == '__main__':
 
     args = parser.parse_args()
@@ -213,15 +266,13 @@ if __name__ == '__main__':
     THETA_STEPS = args.theta
     COLOR_STEPS = args.colors
     TRAIN_SET = args.train
+    GAN_SET = args.gan
 
     glutInit()
     glutInitWindowSize(SCREEN_SIZE, SCREEN_SIZE)
     glutCreateWindow("Color Cuboid")
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutDisplayFunc(display)
-    glutIdleFunc(update)
-
-    init()
 
     if not os.path.exists("data"):
         print "Data folder not found. Creating one..."
@@ -238,5 +289,16 @@ if __name__ == '__main__':
             print "Test folder not found. Creating one..."
             os.makedirs(os.path.join("data", "test"))
             print "Done."
+
+    if GAN_SET:
+        if not os.path.exists(os.path.join("data", "gan")):
+            print "GAN data folder not found. Creating one..."
+            os.makedirs(os.path.join("data", "gan"))
+            print "Done."
+        glutIdleFunc(gan_update)
+    else:
+        glutIdleFunc(update)
+
+    init()
 
     glutMainLoop()
