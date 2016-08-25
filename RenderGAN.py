@@ -60,7 +60,6 @@ class RenderGAN:
         h1 = ops.lrelu(ops.conv2d(h0, self.d_size*2, name='d_h1_conv'))
         h2 = ops.lrelu(ops.conv2d(h1, self.d_size*4, name='d_h2_conv'))
         h3 = ops.lrelu(ops.conv2d(h2, self.d_size*8, name='d_h3_conv'))
-        print h3.get_shape()
         h4 = ops.linear(tf.reshape(h3, [self.batch_size, -1]), 4*4*self.d_size*8, 1, scope='d_h5_lin')
 
         return tf.nn.sigmoid(h4), h4
