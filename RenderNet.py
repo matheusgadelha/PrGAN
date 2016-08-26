@@ -74,7 +74,6 @@ class RenderNet:
             for batch_i in xrange(n_batches):
                 idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
                 imgs_batch = ops.load_imgbatch(dataset_files[idxs_i])
-                plt.imsave("test.png", imgs_batch[0, :, :, :])
                 self.session.run(self.optimizer, feed_dict={self.img_params: dataset_params[idxs_i, :],
                                                             self.final_image: imgs_batch})
                 training_step += 1
@@ -126,7 +125,8 @@ class RenderNet:
             sess.run(tf.initialize_all_variables())
         ops.show_graph_operations()
 
-test_params = np.array([5, 5, 5,
+test_params = np.zeros((64,23))
+test_params[0, :] = np.array([5, 5, 5,
                         1.2, 0.5,
                         1, 0, 0,
                         1, 1, 0,
@@ -135,11 +135,11 @@ test_params = np.array([5, 5, 5,
                         0, 1, 1,
                         1, 1, 1])
 
-
 def main():
     rnet = RenderNet()
     # rnet.train()
-    rnet.test()
+    imgs = rnet.forward_batch(test_params)
+    ops.save_images(imgs, [8, 8], 'test_results.png')
 
 
 if __name__ == '__main__':
