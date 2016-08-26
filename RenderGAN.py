@@ -1,5 +1,8 @@
 import tensorflow as tf
+import numpy as np
 import ops
+import glob
+import os
 from RenderNet import RenderNet
 
 
@@ -50,7 +53,55 @@ class RenderGAN:
             self.saver = tf.train.Saver()
 
     def train(self):
-        pass
+        if not os.path.exists(os.path.join("data", "gan")):
+            print "No GAN training files found. Training aborted. =("
+            return
+
+        dataset_files = glob.glob("data/gan/*.png")
+        dataset_files = np.array(dataset_files)
+        n_files = dataset_files.shape[0]
+
+        self.session.run(tf.initialize_all_variables())
+        self.rendernet.load('checkpoint')
+        for epoch in xrange(self.n_iterations):
+
+            rand_idxs = np.random.permutation(range(n_files))
+            n_batches = n_files // self.batch_size
+
+            for batch_i in xrange(n_batches):
+                idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
+                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i])
+                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size]) \
+                            .astype(np.float32)
+
+                # Update discriminator
+                self.session.run(self.D_optim, feed_dict={self.images: imgs_batch, self.z: batch_z})
+                # Update generator
+                for i in xrange(5):
+                    self.session.run(self.G_optim, feed_dict={self.z: batch_z})
+
+                dloss_fake = self.D_loss_fake.eval(session=self.session, feed_dict={self.z: batch_z})
+                dloss_real = self.D_loss_real.eval(session=self.session, feed_dict={self.images: imgs_batch})
+                gloss = self.G_loss.eval(session=self.session, feed_dict={self.z: batch_z})
+
+#                test_params = np.zeros((64,23))
+#                test_params[0, :] = np.array([5, 5, 5,
+#                                        1.2, 0.5,
+#                                        1, 0, 0,
+#                                        1, 1, 0,
+#                                        0, 0, 1,
+#                                        0, 1, 0,
+#                                        0, 1, 1,
+#                                        1, 1, 1])
+#
+                rendered_images = self.G.eval(session=self.session, feed_dict={self.z: batch_z})
+                rendered_images = np.array(rendered_images)
+                ops.save_images(rendered_images, [8, 8], "gan_results.png")
+
+                print "EPOCH[{}], BATCH[{}/{}]".format(epoch, batch_i, n_batches)
+                print "Discriminator Loss - Real:{} / Fake:{} - Total:{}".format(dloss_real, dloss_fake,
+                                                                                 dloss_real + dloss_fake)
+                print "Generator Loss:{}".format(gloss)
 
     def discriminator(self, image, reuse=False):
         if reuse:
@@ -68,16 +119,16 @@ class RenderGAN:
         with tf.variable_scope('gan'):
             h0 = ops.linear(z_enc, self.z_size, 256, activation=ops.lrelu, scope='g_h0')
             h1 = ops.linear(h0, 256, 256, activation=ops.lrelu, scope='g_h1')
-            img_params = ops.linear(h1, 256, self.rendernet.input_size, scope='g_img_params')
+            self.img_params = ops.linear(h1, 256, self.rendernet.input_size, scope='g_img_params')
 
         with tf.variable_scope('rendernet'):
-            rendered_img = self.rendernet.render(img_params, reuse=True)
+            rendered_img = self.rendernet.render(self.img_params, reuse=True)
         return rendered_img
 
 
 def main():
     rgan = RenderGAN()
-    rgan.rendernet.architecture_check()
+    rgan.train()
 
 
 if __name__ == '__main__':
