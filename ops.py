@@ -26,7 +26,7 @@ class batch_norm(object):
                 self.gamma = tf.get_variable("gamma", [shape[-1]],
                                              initializer=tf.random_normal_initializer(1., 0.02))
 
-                batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2], name='moments')
+                batch_mean, batch_var = tf.nn.moments(x, [0, 1], name='moments')
                 ema_apply_op = self.ema.apply([batch_mean, batch_var])
                 self.ema_mean, self.ema_var = self.ema.average(batch_mean), self.ema.average(batch_var)
 
