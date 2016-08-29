@@ -9,7 +9,7 @@ from RenderNet import RenderNet
 class RenderGAN:
 
     def __init__(self, sess=tf.Session(), image_size=(64, 64), z_size=10,
-                 n_iterations=50, batch_size=64, lrate=0.005, d_size=64):
+                 n_iterations=50, batch_size=64, lrate=0.002, d_size=64):
 
         self.image_size = image_size
         self.n_pixels = self.image_size[0] * self.image_size[1] * 3  # number of channels
@@ -27,6 +27,8 @@ class RenderGAN:
         self.g_bn0 = ops.batch_norm(name='g_bn0')
         self.g_bn1 = ops.batch_norm(name='g_bn1')
         self.g_bn2 = ops.batch_norm(name='g_bn2')
+        self.g_bn3 = ops.batch_norm(name='g_bn3')
+        self.g_bn4 = ops.batch_norm(name='g_bn4')
 
         with tf.variable_scope('gan'):
             self.images = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 3],
@@ -136,11 +138,16 @@ class RenderGAN:
 
     def generator(self, z_enc):
         with tf.variable_scope('gan'):
-            h0 = ops.linear(z_enc, self.z_size, 256, activation=ops.lrelu, scope='g_h0')
+            h0 = ops.linear(z_enc, self.z_size, 256, scope='g_h0')
+            h0 = ops.lrelu(self.g_bn0(h0))
             h1 = ops.linear(h0, 256, 256, activation=ops.lrelu, scope='g_h1')
+            h1 = ops.lrelu(self.g_bn1(h1))
             h2 = ops.linear(h1, 256, 256, activation=ops.lrelu, scope='g_h2')
+            h2 = ops.lrelu(self.g_bn2(h2))
             h3 = ops.linear(h2, 256, 256, activation=ops.lrelu, scope='g_h3')
+            h3 = ops.lrelu(self.g_bn3(h3))
             h4 = ops.linear(h3, 256, 256, activation=ops.lrelu, scope='g_h4')
+            h4 = ops.lrelu(self.g_bn4(h4))
             self.img_params = ops.linear(h4, 256, self.rendernet.input_size, scope='g_img_params')
 
         with tf.variable_scope('rendernet'):
