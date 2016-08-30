@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import ops
 import glob
 import os
@@ -125,21 +125,11 @@ class RenderNet:
             sess.run(tf.initialize_all_variables())
         ops.show_graph_operations()
 
-test_params = np.zeros((64,23))
-test_params[0, :] = np.array([5, 5, 5,
-                        1.2, 0.5,
-                        1, 0, 0,
-                        1, 1, 0,
-                        0, 0, 1,
-                        0, 1, 0,
-                        0, 1, 1,
-                        1, 1, 1])
 
 def main():
     rnet = RenderNet()
     # rnet.train()
-    imgs = rnet.forward_batch(test_params)
-    ops.save_images(imgs, [8, 8], 'test_results.png')
+    rnet.test()
 
 
 if __name__ == '__main__':

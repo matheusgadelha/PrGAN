@@ -103,21 +103,11 @@ class RenderGAN:
                     for i in xrange(5):
                         self.session.run(self.G_optim, feed_dict={self.z: batch_z})
 
-
-#                test_params = np.zeros((64,23))
-#                test_params[0, :] = np.array([5, 5, 5,
-#                                        1.2, 0.5,
-#                                        1, 0, 0,
-#                                        1, 1, 0,
-#                                        0, 0, 1,
-#                                        0, 1, 0,
-#                                        0, 1, 1,
-#                                        1, 1, 1])
-
                 if batch_i % 10 == 0:
                     rendered_images = self.G.eval(session=self.session, feed_dict={self.z: sample_z})
                     rendered_images = np.array(rendered_images)
-                    ops.save_images(rendered_images, [8, 8], "results/gancubes{}.png".format(epoch*n_batches+batch_i))
+                    ops.save_images(rendered_images, [8, 8],
+                                    "results/gancubes{}.png".format(epoch*n_batches+batch_i))
 
                 print "EPOCH[{}], BATCH[{}/{}]".format(epoch, batch_i, n_batches)
                 print "Discriminator Loss - Real:{} / Fake:{} - Total:{}".format(dloss_real, dloss_fake,

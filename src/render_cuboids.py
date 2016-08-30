@@ -282,12 +282,12 @@ if __name__ == '__main__':
     if TRAIN_SET:
         if not os.path.exists(os.path.join("data", "train")):
             print "Train folder not found. Creating one..."
-            os.makedirs(os.path.join("data", "train"))
+            os.makedirs(os.path.join(ROOT_FOLDER, "data", "train"))
             print "Done."
     else:
         if not os.path.exists(os.path.join("data", "test")):
             print "Test folder not found. Creating one..."
-            os.makedirs(os.path.join("data", "test"))
+            os.makedirs(os.path.join(ROOT_FOLDER, "data", "test"))
             print "Done."
 
     if GAN_SET:
