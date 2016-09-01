@@ -2,6 +2,8 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
+from renderutils import Camera
+
 import numpy as np
 import matplotlib.image as mpimg
 import sys
@@ -97,22 +99,6 @@ class Cube:
         glEnd()
         glPopMatrix()
 
-
-class Camera:
-    def __init__(self, t=0, p=0.5, r=5.0):
-        self.theta = t
-        self.phi = p
-        self.radius = r
-
-    def place(self):
-        px = self.radius * np.cos(self.theta) * np.cos(self.phi)
-        py = self.radius * np.sin(self.phi)
-        pz = self.radius * np.sin(self.theta) * np.cos(self.phi)
-
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        gluLookAt(px, py, pz, 0, 0, 0, 0, 1, 0)
-
 MAX_COORD = 5
 SCREEN_SIZE = 128
 THETA_STEPS = 5
@@ -123,7 +109,6 @@ DEPTH_STEPS = 5
 COLOR_STEPS = 5
 TRAIN_SET = False
 GAN_SET = False
-
 
 def init():
     glEnable(GL_DEPTH_TEST)
