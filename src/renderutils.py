@@ -25,6 +25,75 @@ class Camera:
         gluLookAt(px, py, pz, 0, 0, 0, 0, 1, 0)
 
 
+def sphere_to_cartesian(array):
+    px = array[2] * np.cos(array[0]) * np.cos(array[1])
+    py = array[2] * np.sin(array[1])
+    pz = array[2] * np.sin(array[0]) * np.cos(array[1])
+
+    return np.array([px, py, pz])
+
+
+class RenderUtils:
+
+    @staticmethod
+    def vertex(v):
+        glVertex3f(v[0], v[1], v[2])
+
+    @staticmethod
+    def color(c):
+        glColor3f(c[0], c[1], c[2])
+
+
+class Sphere(object):
+
+    def __init__(self, radius=1.0, resolution=10):
+        self.radius = radius
+        self.resolution = resolution
+        self.vertices = []
+        self.colors = []
+
+        self.grid = np.zeros((resolution, resolution, 3))
+        theta_values = np.linspace(0, 2*np.pi, self.resolution)
+        phi_values = np.linspace(np.pi/2., -np.pi/2., self.resolution)
+
+        for p in range(resolution-1):
+            for t in range(resolution):
+                v0 = np.array([theta_values[t], phi_values[p], self.radius])
+                v0 = sphere_to_cartesian(v0)
+                self.vertices.append(v0)
+                self.colors.append(np.random.rand(3))
+
+                v1 = np.array([theta_values[t], phi_values[p+1], self.radius])
+                v1 = sphere_to_cartesian(v1)
+                self.vertices.append(v1)
+                self.colors.append(np.random.rand(3))
+
+                v2 = np.array([theta_values[(t+1) % self.resolution], phi_values[p], self.radius])
+                v2 = sphere_to_cartesian(v2)
+                self.vertices.append(v2)
+                self.colors.append(np.random.rand(3))
+
+                self.vertices.append(v1)
+                self.colors.append(np.random.rand(3))
+
+                v3 = np.array([theta_values[(t+1) % self.resolution], phi_values[p+1], self.radius])
+                v3 = sphere_to_cartesian(v3)
+                self.vertices.append(v3)
+                self.colors.append(np.random.rand(3))
+
+                self.vertices.append(v2)
+                self.colors.append(np.random.rand(3))
+
+    def draw(self):
+        RenderUtils.color([0, 0, 0])
+        glBegin(GL_TRIANGLES)
+        for i, v in enumerate(self.vertices):
+            RenderUtils.color(self.colors[i])
+            RenderUtils.vertex(v)
+            # print v
+        glEnd()
+
+
 class GLWindow(object):
 
     instance = None
@@ -40,10 +109,11 @@ class GLWindow(object):
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
         glutDisplayFunc(GLWindow.displayWrapper)
         glutIdleFunc(GLWindow.displayWrapper)
+        glutMouseFunc(GLWindow.mouseWrapper)
+        glutMotionFunc(GLWindow.motionWrapper)
 
-        GLWindow.initializeWrapper()
 
-        glutMainLoop()
+        self.initialize()
 
     def initialize(self):
         glClearDepth(1.0)
@@ -51,6 +121,12 @@ class GLWindow(object):
 
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+    def mouse(self, button, state, x, y):
+        pass
+
+    def motion(self, x, y):
+        pass
 
     @staticmethod
     def get_instance(ss=(640, 640)):
@@ -64,6 +140,14 @@ class GLWindow(object):
     def displayWrapper():
         GLWindow.get_instance().display()
         glutSwapBuffers()
+
+    @staticmethod
+    def mouseWrapper(button, state, x, y):
+        GLWindow.get_instance().mouse(button, state, x, y)
+
+    @staticmethod
+    def motionWrapper(x, y):
+        GLWindow.get_instance().motion(x, y)
 
     @staticmethod
     def initializeWrapper():

@@ -3,6 +3,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
 from renderutils import Camera
+from renderutils import RenderUtils
 
 import numpy as np
 import matplotlib.image as mpimg
@@ -35,21 +36,13 @@ class Cube:
             self.face_colors = fcolors
 
     @staticmethod
-    def set_color(c):
-        glColor3f(c[0], c[1], c[2])
-
-    @staticmethod
-    def set_vertex(v):
-        glVertex3f(v[0], v[1], v[2])
-
-    @staticmethod
     def draw_face(verts):
-        Cube.set_vertex(verts[0])
-        Cube.set_vertex(verts[1])
-        Cube.set_vertex(verts[2])
-        Cube.set_vertex(verts[0])
-        Cube.set_vertex(verts[2])
-        Cube.set_vertex(verts[3])
+        RenderUtils.vertex(verts[0])
+        RenderUtils.vertex(verts[1])
+        RenderUtils.vertex(verts[2])
+        RenderUtils.vertex(verts[0])
+        RenderUtils.vertex(verts[2])
+        RenderUtils.vertex(verts[3])
 
     def draw(self):
 
@@ -61,37 +54,37 @@ class Cube:
         glBegin(GL_TRIANGLES)
 
         # Front face
-        Cube.set_color(self.face_colors[0])
+        RenderUtils.color(self.face_colors[0])
         front_face_verts = [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5],
                             [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5]]
         Cube.draw_face(front_face_verts)
 
         # Right face
-        Cube.set_color(self.face_colors[1])
+        RenderUtils.color(self.face_colors[1])
         right_face_verts = [[0.5, -0.5, -0.5], [0.5, -0.5, 0.5],
                             [0.5, 0.5, 0.5], [0.5, 0.5, -0.5]]
         Cube.draw_face(right_face_verts)
 
         # Left face
-        Cube.set_color(self.face_colors[2])
+        RenderUtils.color(self.face_colors[2])
         left_face_verts = [[-0.5, -0.5, -0.5], [-0.5, -0.5, 0.5],
                            [-0.5, 0.5, 0.5], [-0.5, 0.5, -0.5]]
         Cube.draw_face(left_face_verts)
 
         # Back face
-        Cube.set_color(self.face_colors[3])
+        RenderUtils.color(self.face_colors[3])
         back_face_verts = [[-0.5, -0.5, 0.5], [0.5, -0.5, 0.5],
                            [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]]
         Cube.draw_face(back_face_verts)
 
         # Top face
-        Cube.set_color(self.face_colors[4])
+        RenderUtils.color(self.face_colors[4])
         top_face_verts = [[-0.5, 0.5, -0.5], [0.5, 0.5, -0.5],
                           [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]]
         Cube.draw_face(top_face_verts)
 
         # Bottom face
-        Cube.set_color(self.face_colors[5])
+        RenderUtils.color(self.face_colors[5])
         bottom_face_verts = [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5],
                              [0.5, -0.5, 0.5], [-0.5, -0.5, 0.5]]
         Cube.draw_face(bottom_face_verts)
@@ -267,12 +260,12 @@ if __name__ == '__main__':
     if TRAIN_SET:
         if not os.path.exists(os.path.join("data", "train")):
             print "Train folder not found. Creating one..."
-            os.makedirs(os.path.join(ROOT_FOLDER, "data", "train"))
+            os.makedirs(os.path.join("data", "train"))
             print "Done."
     else:
         if not os.path.exists(os.path.join("data", "test")):
             print "Test folder not found. Creating one..."
-            os.makedirs(os.path.join(ROOT_FOLDER, "data", "test"))
+            os.makedirs(os.path.join("data", "test"))
             print "Done."
 
     if GAN_SET:
