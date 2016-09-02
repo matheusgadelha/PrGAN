@@ -16,8 +16,9 @@ class SphericalHarmonicsViewer(GLWindow):
 
     def __init__(self, window_name='Spherical Harmonics Viewer', window_size=(640, 640)):
         super(SphericalHarmonicsViewer, self).__init__(window_name, window_size)
-        self.sphere = Sphere(resolution=50)
+        self.sphere = Sphere(resolution=30)
         self.camera = Camera()
+        self.camera_speed = 1/100.
         self.initialize()
         self.action = ""
 
@@ -34,8 +35,8 @@ class SphericalHarmonicsViewer(GLWindow):
         if self.action == "MOVE_CAMERA":
             dx = self.prev_x - x
             dy = self.prev_y - y
-            self.camera.theta -= dx/100.
-            self.camera.phi += dy/100.
+            self.camera.theta -= dx * self.camera_speed
+            self.camera.phi += dy * self.camera_speed
             self.prev_x = x
             self.prev_y = y
 
