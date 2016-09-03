@@ -53,36 +53,46 @@ class Sphere(object):
         self.colors = []
 
         self.grid = np.zeros((resolution, resolution, 3))
-        theta_values = np.linspace(0, 2*np.pi, self.resolution)
-        phi_values = np.linspace(np.pi/2., -np.pi/2., self.resolution)
 
-        for p in range(resolution-1):
-            for t in range(resolution):
+        self.vertices, self.colors = self.build_geometry()
+
+    def build_geometry(self):
+
+        theta_values = np.linspace(0, 2 * np.pi, self.resolution)
+        phi_values = np.linspace(np.pi / 2., -np.pi / 2., self.resolution)
+
+        vertices = []
+        colors = []
+
+        for p in range(self.resolution-1):
+            for t in range(self.resolution):
                 v0 = np.array([theta_values[t], phi_values[p], self.radius])
                 v0 = sphere_to_cartesian(v0)
-                self.vertices.append(v0)
-                self.colors.append(np.random.rand(3))
+                vertices.append(v0)
+                colors.append(np.random.rand(3))
 
                 v1 = np.array([theta_values[t], phi_values[p+1], self.radius])
                 v1 = sphere_to_cartesian(v1)
-                self.vertices.append(v1)
-                self.colors.append(np.random.rand(3))
+                vertices.append(v1)
+                colors.append(np.random.rand(3))
 
                 v2 = np.array([theta_values[(t+1) % self.resolution], phi_values[p], self.radius])
                 v2 = sphere_to_cartesian(v2)
-                self.vertices.append(v2)
-                self.colors.append(np.random.rand(3))
+                vertices.append(v2)
+                colors.append(np.random.rand(3))
 
-                self.vertices.append(v1)
-                self.colors.append(np.random.rand(3))
+                vertices.append(v1)
+                colors.append(np.random.rand(3))
 
                 v3 = np.array([theta_values[(t+1) % self.resolution], phi_values[p+1], self.radius])
                 v3 = sphere_to_cartesian(v3)
-                self.vertices.append(v3)
-                self.colors.append(np.random.rand(3))
+                vertices.append(v3)
+                colors.append(np.random.rand(3))
 
-                self.vertices.append(v2)
-                self.colors.append(np.random.rand(3))
+                vertices.append(v2)
+                colors.append(np.random.rand(3))
+
+        return vertices, colors
 
     def draw(self):
         RenderUtils.color([0, 0, 0])

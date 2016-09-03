@@ -6,11 +6,17 @@ from renderutils import Camera
 from renderutils import GLWindow
 from renderutils import Sphere
 
+from scipy.special import sph_harm
+
 import numpy as np
 #import matplotlib.image as mpimg
 #import sys
 #import argparse
 #import ops
+
+#class SphericalHarmonicsMesh(Sphere):
+#    def __init__(self, radius=1.0, resolution=50):
+#        def
 
 class SphericalHarmonicsViewer(GLWindow):
 
