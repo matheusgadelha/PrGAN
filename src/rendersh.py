@@ -5,7 +5,9 @@ from OpenGL.GLU import *
 from renderutils import Camera
 from renderutils import GLWindow
 from renderutils import Sphere
+from renderutils import RenderUtils
 from scipy.special import sph_harm
+from mesh import Mesh
 
 import numpy as np
 import renderutils
@@ -16,7 +18,7 @@ import renderutils
 
 
 class SphericalHarmonicsMesh(Sphere):
-    def __init__(self, radius=2.0, resolution=50, l=3, m=1):
+    def __init__(self, radius=2.0, resolution=50, l=3, m=0):
         self.l = l
         self.m = m
         super(SphericalHarmonicsMesh, self).__init__(radius, resolution)
@@ -70,6 +72,7 @@ class SphericalHarmonicsViewer(GLWindow):
         super(SphericalHarmonicsViewer, self).__init__(window_name, window_size)
         self.sh = SphericalHarmonicsMesh()
         self.camera = Camera()
+        self.mesh = Mesh(os.path.join("..", "models", "cube.obj"))
         self.camera_speed = 1/100.
         self.initialize()
         self.action = ""
@@ -107,8 +110,10 @@ class SphericalHarmonicsViewer(GLWindow):
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.place()
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         self.sh.draw()
+        RenderUtils.color([0, 0, 0])
+        self.mesh.draw()
 
 if __name__ == '__main__':
     window = SphericalHarmonicsViewer()
