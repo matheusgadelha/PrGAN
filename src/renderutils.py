@@ -164,5 +164,8 @@ class GLWindow(object):
         GLWindow.get_instance().initialize()
 
 
+def lerp(a, b, t):
+    return a + (b-a)*t
+
 if __name__ == '__main__':
     window = GLWindow()

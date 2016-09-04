@@ -5,18 +5,18 @@ from OpenGL.GLU import *
 from renderutils import Camera
 from renderutils import GLWindow
 from renderutils import Sphere
-from renderutils import sphere_to_cartesian
-
 from scipy.special import sph_harm
 
 import numpy as np
+import renderutils
 #import matplotlib.image as mpimg
 #import sys
 #import argparse
 #import ops
 
+
 class SphericalHarmonicsMesh(Sphere):
-    def __init__(self, radius=2.0, resolution=50, l=7, m=5):
+    def __init__(self, radius=2.0, resolution=50, l=3, m=1):
         self.l = l
         self.m = m
         super(SphericalHarmonicsMesh, self).__init__(radius, resolution)
@@ -25,41 +25,43 @@ class SphericalHarmonicsMesh(Sphere):
 
     def build_geometry(self):
         theta_values = np.linspace(0, 2 * np.pi, self.resolution)
-        phi_values = np.linspace(np.pi / 2., -np.pi / 2., self.resolution)
+        phi_values = np.linspace(-np.pi/2., np.pi/2., self.resolution)
 
         vertices = []
         colors = []
 
         for p in range(self.resolution - 1):
             for t in range(self.resolution):
-                v0 = self.create_sh_vertex(theta_values[t], phi_values[p])
+                v0, c0 = self.create_sh_vertex(theta_values[t], phi_values[p])
                 vertices.append(v0)
-                colors.append(np.random.rand(3))
+                colors.append(c0)
 
-                v1 = self.create_sh_vertex(theta_values[t], phi_values[p + 1])
+                v1, c1 = self.create_sh_vertex(theta_values[t], phi_values[p + 1])
                 vertices.append(v1)
-                colors.append(np.random.rand(3))
+                colors.append(c1)
 
-                v2 = self.create_sh_vertex(theta_values[(t + 1) % self.resolution], phi_values[p])
+                v2, c2 = self.create_sh_vertex(theta_values[(t + 1) % self.resolution], phi_values[p])
                 vertices.append(v2)
-                colors.append(np.random.rand(3))
+                colors.append(c2)
 
                 vertices.append(v1)
-                colors.append(np.random.rand(3))
+                colors.append(c1)
 
-                v3 = self.create_sh_vertex(theta_values[(t + 1) % self.resolution], phi_values[p+1])
+                v3, c3 = self.create_sh_vertex(theta_values[(t + 1) % self.resolution], phi_values[p+1])
                 vertices.append(v3)
-                colors.append(np.random.rand(3))
+                colors.append(c3)
 
                 vertices.append(v2)
-                colors.append(np.random.rand(3))
+                colors.append(c2)
 
         return vertices, colors
 
     def create_sh_vertex(self, theta, phi):
-        r = sph_harm(self.m, self.l, theta, phi).real * self.radius
-        vertex = np.array([theta, phi, r])
-        return sphere_to_cartesian(vertex)
+        r = sph_harm(self.m, self.l, theta, phi+np.pi/2.).real * self.radius
+        vertex = np.array([theta, phi, np.abs(r)])
+
+        return renderutils.sphere_to_cartesian(vertex),\
+               renderutils.lerp(np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), (r/self.radius + 1)/2.)
 
 
 class SphericalHarmonicsViewer(GLWindow):
@@ -105,6 +107,7 @@ class SphericalHarmonicsViewer(GLWindow):
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.place()
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         self.sh.draw()
 
 if __name__ == '__main__':
