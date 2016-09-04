@@ -18,7 +18,7 @@ import renderutils
 
 
 class SphericalHarmonicsMesh(Sphere):
-    def __init__(self, radius=2.0, resolution=50, l=3, m=0):
+    def __init__(self, radius=2.0, resolution=50, l=2, m=1):
         self.l = l
         self.m = m
         super(SphericalHarmonicsMesh, self).__init__(radius, resolution)
@@ -112,8 +112,8 @@ class SphericalHarmonicsViewer(GLWindow):
         self.camera.place()
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         self.sh.draw()
-        RenderUtils.color([0, 0, 0])
-        self.mesh.draw()
+        # RenderUtils.color([0, 0, 0])
+        # self.mesh.draw()
 
 if __name__ == '__main__':
     window = SphericalHarmonicsViewer()

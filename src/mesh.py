@@ -25,12 +25,18 @@ class Mesh(object):
                 v = np.array([float(v) for v in values[1:4]])
                 self.normals.append(v)
             elif values[0] == 'f':
-                self.indices.append(int(values[1].split("/")[0]))
-                self.indices.append(int(values[2].split("/")[0]))
-                self.indices.append(int(values[3].split("/")[0]))
+                self.indices.append(int(values[1].split("/")[0])-1)
+                self.indices.append(int(values[2].split("/")[0])-1)
+                self.indices.append(int(values[3].split("/")[0])-1)
 
     def draw(self):
         glBegin(GL_TRIANGLES)
         for i in self.indices:
-            RenderUtils.vertex(self.vertices[i-1])
+            RenderUtils.vertex(self.vertices[i])
         glEnd()
+
+    def get_triangle(self, i):
+        vertices = [self.vertices[self.indices[3 * i]],
+                    self.vertices[self.indices[3 * i + 1]],
+                    self.vertices[self.indices[3 * i + 2]]]
+        return vertices
