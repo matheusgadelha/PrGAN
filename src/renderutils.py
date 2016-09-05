@@ -33,11 +33,23 @@ def sphere_to_cartesian(array):
     return np.array([px, py, pz])
 
 
+def classic_sphere_to_cartesian(array):
+    px = array[2] * np.cos(array[0]) * np.sin(array[1])
+    py = array[2] * np.cos(array[1])
+    pz = array[2] * np.sin(array[0]) * np.sin(array[1])
+
+    return np.array([px, py, pz])
+
+
 class RenderUtils:
 
     @staticmethod
     def vertex(v):
         glVertex3f(v[0], v[1], v[2])
+
+    @staticmethod
+    def normal(n):
+        glNormal3f(n[0], n[1], n[2])
 
     @staticmethod
     def color(c):
@@ -100,7 +112,6 @@ class Sphere(object):
         for i, v in enumerate(self.vertices):
             RenderUtils.color(self.colors[i])
             RenderUtils.vertex(v)
-            # print v
         glEnd()
 
 

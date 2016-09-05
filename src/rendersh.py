@@ -13,48 +13,67 @@ from mesh import Ray
 import numpy as np
 import renderutils
 
-class SphericalHarmonicsMesh(Sphere):
+
+class SphericalHarmonicsMesh(object):
     def __init__(self, radius=1.0, resolution=50, coeffs=np.array([1])):
         self.coeffs = coeffs
         self.n_frequencies = np.sqrt(coeffs.shape[0])
         self.resolution = resolution
+        self.radius = radius
 
-        super(SphericalHarmonicsMesh, self).__init__(radius, resolution)
-
-        self.vertices, self.colors = self.build_geometry()
+        self.vertices, self.indices, self.colors = self.build_geometry()
+        print self.indices
+        self.mesh = Mesh(vertices=self.vertices, indices=self.indices, colors=self.colors)
 
     def build_geometry(self):
         theta_values = np.linspace(0, 2 * np.pi, self.resolution)
         phi_values = np.linspace(-np.pi/2., np.pi/2., self.resolution)
 
         vertices = []
+        indices = []
         colors = []
 
+        vertex_id = 0
         for p in range(self.resolution - 1):
             for t in range(self.resolution):
                 v0, c0 = self.create_sh_vertex(theta_values[t], phi_values[p])
                 vertices.append(v0)
+                v0_id = vertex_id
+                indices.append(v0_id)
+                vertex_id += 1
                 colors.append(c0)
 
                 v1, c1 = self.create_sh_vertex(theta_values[t], phi_values[p + 1])
                 vertices.append(v1)
+                v1_id = vertex_id
+                indices.append(v1_id)
+                vertex_id += 1
                 colors.append(c1)
 
                 v2, c2 = self.create_sh_vertex(theta_values[(t + 1) % self.resolution], phi_values[p])
                 vertices.append(v2)
+                v2_id = vertex_id
+                indices.append(v2_id)
+                vertex_id += 1
                 colors.append(c2)
 
-                vertices.append(v1)
-                colors.append(c1)
+                indices.append(v1_id)
+                # colors.append(c1)
 
                 v3, c3 = self.create_sh_vertex(theta_values[(t + 1) % self.resolution], phi_values[p+1])
                 vertices.append(v3)
+                v3_id = vertex_id
+                indices.append(v3_id)
+                vertex_id += 1
                 colors.append(c3)
 
-                vertices.append(v2)
-                colors.append(c2)
+                indices.append(v2_id)
+                # colors.append(c2)
 
-        return vertices, colors
+        return vertices, indices, colors
+
+    def draw(self):
+        self.mesh.draw()
 
     def create_sh_vertex(self, theta, phi):
         r = 0.0
@@ -77,7 +96,8 @@ class SphericalHarmonicsViewer(GLWindow):
         self.origin = np.array([0, 0, 0])
 
         self.mesh = Mesh(os.path.join("..", "models", "cube.obj"))
-        self.mesh_samples = self.mesh.get_samples(10000)
+        self.mesh_samples = [] # self.mesh.get_samples(1000)
+        self.compute_mesh_samples(500)
 
         self.n_frequencies = 10
         self.sh_coeffs = np.zeros(self.n_frequencies * self.n_frequencies)
@@ -119,20 +139,22 @@ class SphericalHarmonicsViewer(GLWindow):
                 print 'l:{}, m:{}, ylm:{}'.format(l, m, self.sh_coeffs[idx])
 
     def dist_to_origin(self, val):
-        return np.sqrt(np.sum(np.power(self.origin - val, 2)))
+        return np.sqrt(np.sum(np.power(val - self.origin, 2)))
 
     # Ray tracing approach - Not good
     def compute_mesh_samples(self, count=50):
-        theta_values = np.linspace(0, 2 * np.pi, count)
-        phi_values = np.linspace(-np.pi / 2., np.pi / 2., count)
+        for s in range(count):
+            xi_1 = np.random.rand()
+            xi_2 = np.random.rand()
 
-        for t in theta_values:
-            for p in phi_values:
-                dir = renderutils.sphere_to_cartesian([t, p, 1.0])
-                ray = Ray(self.origin, dir)
-                sample = ray.intersect_mesh(self.mesh)
-                if sample is not None:
-                    self.mesh_samples.append(sample)
+            phi = 2 * np.pi * xi_2
+            theta = 2 * np.arccos(np.sqrt(xi_1))
+
+            dir = renderutils.classic_sphere_to_cartesian([phi, theta, 0.1])
+            ray = Ray(self.origin, dir)
+            sample = ray.intersect_mesh(self.mesh)
+            if sample is not None:
+                self.mesh_samples.append(sample)
 
     def draw_mesh_samples(self):
         glBegin(GL_POINTS)
@@ -165,13 +187,15 @@ class SphericalHarmonicsViewer(GLWindow):
         glOrtho(-MAX_COORD, MAX_COORD, -MAX_COORD, MAX_COORD,
                 0.1, 1000.0)
 
+        glShadeModel(GL_SMOOTH)
+
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.place()
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         self.sh.draw()
         RenderUtils.color([0, 0, 0])
-        self.draw_mesh_samples()
+        # self.draw_mesh_samples()
         # self.mesh.draw()
 
 if __name__ == '__main__':
