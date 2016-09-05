@@ -76,11 +76,9 @@ class SphericalHarmonicsViewer(GLWindow):
         self.camera = Camera()
         self.origin = np.array([0, 0, 0])
 
-        self.mesh = Mesh(os.path.join("..", "models", "cube.obj"))
-        self.mesh_samples = []
-        self.mesh_samples_theta = []
-        self.mesh_samples_phi = []
-        self.compute_mesh_samples()
+        self.mesh = Mesh(os.path.join("..", "models", "bunny.obj"))
+        self.mesh_samples = self.mesh.get_samples(1000)
+        #self.compute_mesh_samples()
 
         self.n_frequencies = 10
         self.sh_coeffs = np.zeros(self.n_frequencies * self.n_frequencies)
@@ -101,13 +99,28 @@ class SphericalHarmonicsViewer(GLWindow):
     def compute_sh_coeffs(self):
         print "Computing SH coefficients"
 
+        n_samples = len(self.mesh_samples)
+        spherical_samples = []
+        for s_i in range(n_samples):
+            s = self.mesh_samples[s_i]
+            r = np.sqrt(np.sum(np.power(s, 2)))
+            sph = np.array([np.arctan2(s[2], s[0]),
+                            np.arcsin(s[1]/r),
+                            r])
+            self.mesh_samples.append(renderutils.sphere_to_cartesian(sph))
+            spherical_samples.append(sph)
+
+        print np.max(np.array(spherical_samples)[:, 1])
+        print np.min(np.array(spherical_samples)[:, 1])
+
         for s_i, s in enumerate(self.mesh_samples):
             for l in range(self.n_frequencies):
                 for m in range(-l, l+1):
                     idx = l*(l+1) + m
+                    r = np.sqrt(np.sum(np.power(s, 2)))
                     self.sh_coeffs[idx] += sph_harm(m, l,
-                                                    self.mesh_samples_theta[s_i],
-                                                    self.mesh_samples_phi[s_i] + np.pi/2.) * self.dist_to_origin(s)
+                                                    np.arctan2(s[2], s[0]),
+                                                    np.arcsin(s[1] / r)+np.pi/2.).real * self.dist_to_origin(s)
             renderutils.progress(s_i, len(self.mesh_samples))
         norm_factor = 4*np.pi / len(self.mesh_samples)
         self.sh_coeffs *= norm_factor
@@ -123,6 +136,7 @@ class SphericalHarmonicsViewer(GLWindow):
     def dist_to_origin(self, val):
         return np.sqrt(np.sum(np.power(self.origin - val, 2)))
 
+    # Ray tracing approach - Not good
     def compute_mesh_samples(self, count=50):
         theta_values = np.linspace(0, 2 * np.pi, count)
         phi_values = np.linspace(-np.pi / 2., np.pi / 2., count)
@@ -134,8 +148,6 @@ class SphericalHarmonicsViewer(GLWindow):
                 sample = ray.intersect_mesh(self.mesh)
                 if sample is not None:
                     self.mesh_samples.append(sample)
-                    self.mesh_samples_theta.append(t)
-                    self.mesh_samples_phi.append(p)
 
     def draw_mesh_samples(self):
         glBegin(GL_POINTS)

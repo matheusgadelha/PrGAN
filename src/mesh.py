@@ -11,6 +11,7 @@ class Mesh(object):
         self.vertices = []
         self.normals = []
         self.indices = []
+        self.areas = []
 
         for line in open(path, "r"):
             if line.startswith('#'):
@@ -29,17 +30,53 @@ class Mesh(object):
                 self.indices.append(int(values[2].split("/")[0])-1)
                 self.indices.append(int(values[3].split("/")[0])-1)
 
+        self.compute_areas()
+        self.area_prob = np.array(self.areas)*(1./np.sum(self.areas))
+
     def draw(self):
         glBegin(GL_TRIANGLES)
         for i in self.indices:
             RenderUtils.vertex(self.vertices[i])
         glEnd()
 
+    def get_samples(self, n):
+        n_triangles = len(self.indices) / 3
+        elements = range(n_triangles)
+        triangles_idxs = np.random.choice(elements, n, p=self.area_prob)
+        samples = []
+
+        for tid in triangles_idxs:
+            t = self.get_triangle(tid)
+            uv = np.zeros(2)
+            bad_params = True
+            while bad_params:
+                uv = np.random.rand(2)
+                if np.sum(uv) < 1:
+                    bad_params = False
+            w = 1 - np.sum(uv)
+            p = uv[0]*t[0] + uv[1]*t[1] + w*t[2]
+            samples.append(p)
+
+        return samples
+
+
     def get_triangle(self, i):
         vertices = [self.vertices[self.indices[3 * i]],
                     self.vertices[self.indices[3 * i + 1]],
                     self.vertices[self.indices[3 * i + 2]]]
         return vertices
+
+    def compute_areas(self):
+        n_triangles = len(self.indices) / 3
+        for i in range(n_triangles):
+            t = self.get_triangle(i)
+
+            e1 = t[1] - t[0]
+            e2 = t[2] - t[0]
+
+            area = np.linalg.norm(np.cross(e1, e2))/2.
+            self.areas.append(area)
+
 
 
 class Ray(object):
