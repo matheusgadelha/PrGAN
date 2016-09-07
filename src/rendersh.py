@@ -4,7 +4,6 @@ from OpenGL.GLU import *
 
 from renderutils import Camera
 from renderutils import GLWindow
-from renderutils import Sphere
 from renderutils import RenderUtils
 from scipy.special import sph_harm
 from mesh import Mesh
@@ -22,7 +21,6 @@ class SphericalHarmonicsMesh(object):
         self.radius = radius
 
         self.vertices, self.indices, self.colors = self.build_geometry()
-        print self.indices
         self.mesh = Mesh(vertices=self.vertices, indices=self.indices, colors=self.colors)
 
     def build_geometry(self):
@@ -85,7 +83,7 @@ class SphericalHarmonicsMesh(object):
 
         vertex = np.array([theta, phi, r])
         return renderutils.sphere_to_cartesian(vertex),\
-               renderutils.lerp(np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), (r/self.radius + 1)/2.)
+            renderutils.lerp(np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), (r/self.radius + 1)/2.)
 
 
 class SphericalHarmonicsViewer(GLWindow):
@@ -96,7 +94,7 @@ class SphericalHarmonicsViewer(GLWindow):
         self.origin = np.array([0, 0, 0])
 
         self.mesh = Mesh(os.path.join("..", "models", "cube.obj"))
-        self.mesh_samples = [] # self.mesh.get_samples(1000)
+        self.mesh_samples = []
         self.compute_mesh_samples(500)
 
         self.n_frequencies = 10
