@@ -104,6 +104,30 @@ def deconv2d(input_, output_shape,
             return deconv
 
 
+def deconv3d(input_, output_shape,
+             k_h=5, k_w=5, k_d=5,
+             d_h=2, d_w=2, d_d=2,
+             stddev=0.02,
+             name='deconv3d',
+             with_w=False):
+    with tf.variable_scope(name):
+        w = tf.get_variable('w', [k_d, k_h, k_w, output_shape[-1], input_.get_shape()[-1]],
+                            initialize=tf.random_normal_initialize(stddev=stddev))
+        try:
+            deconv = tf.nn.conv3d_transpose(input_, w, output_shape=[output_shape],
+                                            strides=[1, d_d, d_h, d_w, 1])
+        except AttributeError:
+            print "This tensorflow version does not supprot tf.nn.conv3d_transpose."
+
+        biases = tf.get_variable('biases', [output_shape[-1]], initializer=tf.constant_initializer(0.0))
+        deconv = tf.reshape(tf.nn.bias_add(deconv, biases), deconv.get_shape())
+
+        if with_w:
+            return deconv, w, biases
+        else:
+            return deconv
+
+
 def l2norm_sqrd(a, b): return tf.reduce_sum(tf.pow(a-b, 2), 1)
 
 
