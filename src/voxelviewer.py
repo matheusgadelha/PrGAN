@@ -6,6 +6,13 @@ from renderutils import Camera
 from renderutils import GLWindow
 from renderutils import RenderUtils
 
+import numpy as np
+
+
+class VoxelGrid():
+    def __init__(self, size=(32, 32, 32), data=np.zeros((32, 32, 32))):
+        self.size = size
+        self.data = data
 
 class VoxelViewer(GLWindow):
 
@@ -15,6 +22,7 @@ class VoxelViewer(GLWindow):
 
         self.prev_x = 0
         self.prev_y = 0
+        self.initialize()
 
         glutMainLoop()
 
@@ -44,4 +52,9 @@ class VoxelViewer(GLWindow):
             self.prev_y = y
 
     def display(self):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.place()
+
+
+if __name__ == "__main__":
+    viewer = VoxelViewer()
