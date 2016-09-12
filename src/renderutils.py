@@ -55,6 +55,10 @@ class RenderUtils:
     def color(c):
         glColor3f(c[0], c[1], c[2])
 
+    @staticmethod
+    def color4(c):
+        glColor4f(c[0], c[1], c[2], c[3])
+
 
 class Sphere(object):
 
