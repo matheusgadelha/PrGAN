@@ -80,14 +80,44 @@ class batch_norm_linear(object):
         return normed
 
 
-def minibatch(input, num_kernels=5, kernel_dim=3):
-    x = linear(input, num_kernels * kernel_dim)
-    activation = tf.reshape(x, (-1, num_kernels, kernel_dim))
-    diffs = tf.expand_dims(activation, 3) - \
-        tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)
-    abs_diffs = tf.reduce_sum(tf.abs(diffs), 2)
-    minibatch_features = tf.reduce_sum(tf.exp(-abs_diffs), 2)
-    return tf.concat(1, [input, minibatch_features])
+def minibatch(input, num_kernels=300, kernel_dim=50, batch_size=64):
+
+    n_kernels = num_kernels
+    dim_per_kernel = kernel_dim
+    x = linear(input, input.get_shape()[1], n_kernels * dim_per_kernel, scope="d_mbd")
+    activation = tf.reshape(x, (batch_size, n_kernels, dim_per_kernel))
+
+    big = np.zeros((batch_size, batch_size), dtype='float32')
+    big += np.eye(batch_size)
+    big = tf.expand_dims(big, 1)
+
+    abs_dif = tf.reduce_sum(tf.abs(tf.expand_dims(activation, 3) - tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)), 2)
+    mask = 1. - big
+    masked = tf.exp(-abs_dif) * mask
+
+    def half(tens, second):
+        m, n, _ = tens.get_shape()
+        m = int(m)
+        n = int(n)
+        return tf.slice(tens, [0, 0, second * batch_size], [m, n, batch_size])
+    # TODO: speedup by allocating the denominator directly instead of constructing it by sum
+    #       (current version makes it easier to play with the mask and not need to rederive
+    #        the denominator)
+    f1 = tf.reduce_sum(half(masked, 0), 2) / tf.reduce_sum(half(mask, 0))
+    f2 = tf.reduce_sum(half(masked, 1), 2) / tf.reduce_sum(half(mask, 1))
+
+    minibatch_features = [f1, f2]
+
+    x = tf.concat(1, [input] + minibatch_features)
+    return x
+
+   # x = linear(input, input.get_shape()[1], num_kernels * kernel_dim)
+   # activation = tf.reshape(x, (-1, num_kernels, kernel_dim))
+   # diffs = tf.expand_dims(activation, 3) - \
+   #     tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)
+   # abs_diffs = tf.reduce_sum(tf.abs(diffs), 2)
+   # minibatch_features = tf.reduce_sum(tf.exp(-abs_diffs), 2)
+   # return tf.concat(1, [input, minibatch_features])
 
 
 def lrelu(x, leak=0.2, name="lrelu"):

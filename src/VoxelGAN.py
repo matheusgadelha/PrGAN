@@ -7,7 +7,7 @@ import os
 class RenderGAN:
 
     def __init__(self, sess=tf.Session(), image_size=(32, 32), z_size=101,
-                 n_iterations=50, batch_size=64, lrate=0.002, d_size=64):
+                 n_iterations=50, batch_size=64, lrate=0.02, d_size=64):
 
         self.image_size = image_size
         self.n_iterations = n_iterations
@@ -17,18 +17,29 @@ class RenderGAN:
         self.base_dim = 512
         self.d_size = 64
         self.z_size = z_size
-        self.tau = 0.1
+        self.tau = 1e-1
+        #self.alpha = tf.constant(1e-6)
+        self.alpha = tf.constant(0.0)
+        self.beta = tf.constant(0.0)
+        self.size = image_size[0]
 
         self.lr = tf.constant(np.load('data/lr.npy'))
         self.rl = tf.constant(np.load('data/rl.npy'))
         self.fb = tf.constant(np.load('data/fb.npy'))
         self.bf = tf.constant(np.load('data/bf.npy'))
 
+        self.g_bnf0 = ops.batch_norm_linear(name='g_bnf0')
         self.g_bn0 = ops.batch_norm(name='g_bn0')
         self.g_bn1 = ops.batch_norm(name='g_bn1')
         self.g_bn2 = ops.batch_norm(name='g_bn2')
         self.g_bn3 = ops.batch_norm(name='g_bn3')
         self.g_bn4 = ops.batch_norm(name='g_bn4')
+
+        self.d_bn0 = ops.batch_norm(name='d_bn0')
+        self.d_bn1 = ops.batch_norm(name='d_bn1')
+        self.d_bn2 = ops.batch_norm(name='d_bn2')
+        self.d_bn3 = ops.batch_norm(name='d_bn3')
+        self.d_bn4 = ops.batch_norm(name='d_bn4')
 
         with tf.variable_scope('gan'):
             self.images = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 1],
@@ -47,6 +58,14 @@ class RenderGAN:
                                                                                       tf.zeros_like(self.D_fake)))
             self.G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_fake_logits,
                                                                                  tf.ones_like(self.D_fake)))
+            self.l2G_norm = tf.reduce_sum(tf.square(self.voxels))
+            tv_d = self.voxels[:, :, 0:self.size - 2] - self.voxels[:, :, 1:self.size - 1]
+            tv_h = self.voxels[:, 0:self.size - 2, :] - self.voxels[:, 1:self.size - 1, :]
+            tv_w = self.voxels[0:self.size - 2, :, :] - self.voxels[1:self.size - 1, :, :]
+            self.tvG_loss = tf.reduce_sum(tf.square(tv_d)) + tf.reduce_sum(tf.square(tv_h)) + \
+                            tf.reduce_sum(tf.square(tv_w))
+            self.G_loss = tf.add(self.G_loss, tf.mul(self.alpha, self.l2G_norm)) + self.beta*self.tvG_loss
+
             self.D_loss = self.D_loss_real + self.D_loss_fake
 
             allvars = tf.trainable_variables()
@@ -77,6 +96,7 @@ class RenderGAN:
             for batch_i in xrange(n_batches):
                 idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
                 imgs_batch = ops.load_imgbatch(dataset_files[idxs_i], color=False)
+                ops.save_images(imgs_batch, [8, 8], "sanity_imgs.png")
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
 
                 #img0 = self.img0.eval(session=self.session, feed_dict={self.z: sample_z})
@@ -119,44 +139,60 @@ class RenderGAN:
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        print "images ", image
-        h0 = ops.lrelu(ops.conv2d(image, self.d_size, name='d_h0_conv'))
-        print "h0", h0.get_shape()
-        h1 = ops.lrelu(ops.conv2d(h0, self.d_size*2, name='d_h1_conv'))
-        print "h1",  h1.get_shape()
-        h2 = ops.lrelu(ops.conv2d(h1, self.d_size*4, name='d_h2_conv'))
-        print "h2",  h2.get_shape()
-        h3 = ops.linear(tf.reshape(h2, [self.batch_size, -1]), 4*4*self.d_size*4, 1, scope='d_h5_lin')
+        h0 = ops.conv2d(image, self.d_size, name='d_h0_conv')
+        h0 = ops.lrelu(h0)
+        h1 = ops.conv2d(h0, self.d_size*2, name='d_h1_conv')
+        h1 = ops.lrelu(h1)
+        h2 = ops.conv2d(h1, self.d_size*4, name='d_h2_conv')
+        h2 = ops.lrelu(h2)
+        h2 = tf.reshape(h2, [self.batch_size, -1])
+        h2 = ops.minibatch(h2)
+        h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
 
         return tf.nn.sigmoid(h3), h3
 
     def generator(self, z_enc):
         with tf.variable_scope('gan'):
-            h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*32*8, scope='g_h0', activation=ops.lrelu)
-            h0 = tf.reshape(h0, [-1, 4, 4, 32*8])
-            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 32*4], name='g_h1')
+#            f0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 16*16, scope='g_f0')
+#            f0 = ops.lrelu(self.g_bnf0(f0))
+#            h0 = ops.linear(f0, 16*16, 4*4*32*16, scope='g_h0')
+#            h0 = tf.reshape(h0, [-1, 4, 4, 32*16])
+#            h0 = ops.lrelu(self.g_bn0(h0))
+#            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 32*8], name='g_h1')
+#            h1 = ops.lrelu(self.g_bn1(h1))
+#            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 32*4], name='g_h2')
+#            h2 = ops.lrelu(self.g_bn2(h2))
+#            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 32], name='g_h4')
+#            h3 = ops.lrelu(self.g_bn4(h3))
+#            v = z_enc[:, self.z_size-1]
+#            self.voxels = h3
+#
+#            rendered_imgs = []
+#            for i in xrange(self.batch_size):
+#                img = tf.case({tf.less(v[i], tf.constant(-0.5)): lambda: tf.reduce_sum(self.voxels[i], 0),
+#                                tf.logical_and(tf.less(v[i], tf.constant(0.0)), tf.less(tf.constant(-0.5), v[i])): lambda: tf.reduce_sum(self.voxels[i], 1),
+#                                tf.logical_and(tf.less(v[i], tf.constant(0.5)), tf.less(tf.constant(0.0), v[i])): lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 0), [False, True])},
+#                                # tf.less(v[i], tf.constant(1.0)): lambda: tf.reverse(tf.reduce_sum(self.voxels, 1), [False, False, True])},
+#                              default=lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 1), [False, True]),
+#                              exclusive=True)
+#                img = tf.sub(tf.ones_like(img), tf.exp(tf.mul(img, -self.tau)))
+#                #if i == 0:
+#                #    self.img0 = img
+#                rendered_imgs.append(img)
+#
+#            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
+
+            h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*32, scope='g_h0')
+            h0 = tf.reshape(h0, [-1, 4, 4, 32])
+            h0 = ops.lrelu(self.g_bn0(h0))
+            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 16], name='g_h1')
             h1 = ops.lrelu(self.g_bn1(h1))
-            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 32*2], name='g_h2')
+            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 8], name='g_h2')
             h2 = ops.lrelu(self.g_bn2(h2))
-            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 32], name='g_h4')
-            h3 = ops.lrelu(self.g_bn4(h3))
-            v = z_enc[:, self.z_size-1]
+            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 1], name='g_h3')
+            h3 = ops.lrelu(self.g_bn3(h3))
             self.voxels = h3
-
-            rendered_imgs = []
-            for i in xrange(self.batch_size):
-                img = tf.case({tf.less(v[i], tf.constant(-0.5)): lambda: tf.reduce_sum(self.voxels[i], 0),
-                                tf.logical_and(tf.less(v[i], tf.constant(0.0)), tf.less(tf.constant(-0.5), v[i])): lambda: tf.reduce_sum(self.voxels[i], 1),
-                                tf.logical_and(tf.less(v[i], tf.constant(0.5)), tf.less(tf.constant(0.0), v[i])): lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 0), [False, True])},
-                                # tf.less(v[i], tf.constant(1.0)): lambda: tf.reverse(tf.reduce_sum(self.voxels, 1), [False, False, True])},
-                              default=lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 1), [False, True]),
-                              exclusive=True)
-                img = tf.sub(tf.ones_like(img), tf.exp(tf.mul(img, -self.tau)))
-                #if i == 0:
-                #    self.img0 = img
-                rendered_imgs.append(img)
-
-            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
+            self.final_imgs = self.voxels
         return self.final_imgs
 
 
