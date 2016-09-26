@@ -7,7 +7,7 @@ from renderutils import GLWindow
 from renderutils import RenderUtils
 
 import numpy as np
-
+import matplotlib.image as mpimg
 
 class Voxel:
     def __init__(self, value=1.0, position=[0.0, 0.0, 0.0], size=1.0):
@@ -118,10 +118,9 @@ class VoxelViewer(GLWindow):
         self.prev_y = 0
         self.camera_speed = 1/100.
 
-        data = np.zeros((16, 16, 16))
-        data[:, 0, 0] = 1.0
-        data[8, :, 8] = 1.0
-        self.voxelgrid = VoxelGrid(size=(16, 16, 16), data=data)
+        data = np.load("voxels.npy")[0]
+        print data.shape
+        self.voxelgrid = VoxelGrid(size=(32, 32, 32), data=data)
 
         self.initialize()
 
@@ -157,6 +156,9 @@ class VoxelViewer(GLWindow):
 
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        buffer_data = glReadPixels(0, 0, self.screen_size[0], self.screen_size[1], GL_RGB, GL_FLOAT)
+        buffer_data = np.array(buffer_data)
+        mpimg.imsave("rendered_voxels.png", buffer_data)
         self.camera.place()
         self.voxelgrid.draw()
 
