@@ -7,7 +7,7 @@ import os
 class RenderGAN:
 
     def __init__(self, sess=tf.Session(), image_size=(32, 32), z_size=101,
-                 n_iterations=50, batch_size=64, lrate=0.02, d_size=64):
+                 n_iterations=50, batch_size=64, lrate=0.002, d_size=64):
 
         self.image_size = image_size
         self.n_iterations = n_iterations
@@ -15,9 +15,10 @@ class RenderGAN:
         self.lrate = lrate
         self.session = sess
         self.base_dim = 512
-        self.d_size = 64
+        self.d_size = 128
         self.z_size = z_size
         self.tau = 1e-1
+        self.dataset_name = "chairs_voxel"
         #self.alpha = tf.constant(1e-6)
         self.alpha = tf.constant(0.0)
         self.beta = tf.constant(0.0)
@@ -42,7 +43,7 @@ class RenderGAN:
         self.d_bn4 = ops.batch_norm(name='d_bn4')
 
         with tf.variable_scope('gan'):
-            self.images = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 1],
+            self.images = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], image_size[0]],
                                          name='final_image')
             self.z = tf.placeholder(tf.float32, shape=[batch_size, self.z_size], name='z')
 
@@ -78,11 +79,11 @@ class RenderGAN:
             self.saver = tf.train.Saver()
 
     def train(self):
-        if not os.path.exists(os.path.join("data", "chairs")):
+        if not os.path.exists(os.path.join("data", self.dataset_name)):
             print "No GAN training files found. Training aborted. =("
             return
 
-        dataset_files = glob.glob("data/chairs/*.png")
+        dataset_files = glob.glob("data/"+self.dataset_name+"/*.npy")
         dataset_files = np.array(dataset_files)
         n_files = dataset_files.shape[0]
         sample_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
@@ -95,8 +96,7 @@ class RenderGAN:
 
             for batch_i in xrange(n_batches):
                 idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
-                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i], color=False)
-                ops.save_images(imgs_batch, [8, 8], "sanity_imgs.png")
+                imgs_batch = ops.load_voxelbatch(dataset_files[idxs_i])
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
 
                 #img0 = self.img0.eval(session=self.session, feed_dict={self.z: sample_z})
@@ -121,14 +121,17 @@ class RenderGAN:
                     self.session.run(self.D_optim, feed_dict={self.images: imgs_batch, self.z: batch_z})
                 # Update generator
                 if train_generator:
-                    for i in xrange(5):
+                    for i in xrange(10):
                         self.session.run(self.G_optim, feed_dict={self.z: batch_z})
 
-                if batch_i % 10 == 0:
+                if batch_i % 20 == 0:
+                    voxels = self.voxels.eval(session=self.session, feed_dict={self.z: sample_z})
                     rendered_images = self.G.eval(session=self.session, feed_dict={self.z: sample_z})
                     rendered_images = np.array(rendered_images)
-                    ops.save_images(rendered_images, [8, 8],
-                                    "results/voxelchairs{}.png".format(epoch*n_batches+batch_i))
+                    ops.save_voxels(rendered_images, "results/chairs_voxel")
+                   # ops.save_images(rendered_images, [8, 8],
+                   #                 "results/voxelchairs{}.png".format(epoch*n_batches+batch_i))
+                    np.save("voxels.npy", voxels)
 
                 print "EPOCH[{}], BATCH[{}/{}]".format(epoch, batch_i, n_batches)
                 print "Discriminator Loss - Real:{} / Fake:{} - Total:{}".format(dloss_real, dloss_fake,
@@ -146,50 +149,52 @@ class RenderGAN:
         h2 = ops.conv2d(h1, self.d_size*4, name='d_h2_conv')
         h2 = ops.lrelu(h2)
         h2 = tf.reshape(h2, [self.batch_size, -1])
-        h2 = ops.minibatch(h2)
         h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
 
         return tf.nn.sigmoid(h3), h3
 
     def generator(self, z_enc):
         with tf.variable_scope('gan'):
-#            f0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 16*16, scope='g_f0')
-#            f0 = ops.lrelu(self.g_bnf0(f0))
-#            h0 = ops.linear(f0, 16*16, 4*4*32*16, scope='g_h0')
-#            h0 = tf.reshape(h0, [-1, 4, 4, 32*16])
-#            h0 = ops.lrelu(self.g_bn0(h0))
-#            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 32*8], name='g_h1')
-#            h1 = ops.lrelu(self.g_bn1(h1))
-#            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 32*4], name='g_h2')
-#            h2 = ops.lrelu(self.g_bn2(h2))
-#            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 32], name='g_h4')
-#            h3 = ops.lrelu(self.g_bn4(h3))
-#            v = z_enc[:, self.z_size-1]
-#            self.voxels = h3
-#
-#            rendered_imgs = []
-#            for i in xrange(self.batch_size):
-#                img = tf.case({tf.less(v[i], tf.constant(-0.5)): lambda: tf.reduce_sum(self.voxels[i], 0),
-#                                tf.logical_and(tf.less(v[i], tf.constant(0.0)), tf.less(tf.constant(-0.5), v[i])): lambda: tf.reduce_sum(self.voxels[i], 1),
-#                                tf.logical_and(tf.less(v[i], tf.constant(0.5)), tf.less(tf.constant(0.0), v[i])): lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 0), [False, True])},
-#                                # tf.less(v[i], tf.constant(1.0)): lambda: tf.reverse(tf.reduce_sum(self.voxels, 1), [False, False, True])},
-#                              default=lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 1), [False, True]),
-#                              exclusive=True)
-#                img = tf.sub(tf.ones_like(img), tf.exp(tf.mul(img, -self.tau)))
-#                #if i == 0:
-#                #    self.img0 = img
-#                rendered_imgs.append(img)
-#
-#            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
+          #  stddev = 2e-3
+          #  f0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 32*32, scope='g_f0')
+          #  f0 = ops.lrelu(self.g_bnf0(f0))
+          #  h0 = ops.linear(f0, 32*32, 4*4*32*16, scope='g_h0')
+          #  h0 = tf.reshape(h0, [-1, 4, 4, 32*16])
+          #  h0 = ops.lrelu(self.g_bn0(h0))
+          #  h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 32*8], name='g_h1', stddev=stddev)
+          #  h1 = ops.lrelu(self.g_bn1(h1))
+          #  h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 32*4], name='g_h2', stddev=stddev)
+          #  h2 = ops.lrelu(self.g_bn2(h2))
+          #  h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 32], name='g_h4', stddev=stddev)
+          #  h3 = ops.lrelu(self.g_bn4(h3))
+          #  v = z_enc[:, self.z_size-1]
+          #  self.voxels = h3
 
-            h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*32, scope='g_h0')
-            h0 = tf.reshape(h0, [-1, 4, 4, 32])
+          #  rendered_imgs = []
+          #  for i in xrange(self.batch_size):
+          #      img = tf.case({tf.less(v[i], tf.constant(-0.5)): lambda: tf.reduce_sum(self.voxels[i], 0),
+          #                      tf.logical_and(tf.less(v[i], tf.constant(0.0)), tf.less(tf.constant(-0.5), v[i])): lambda: tf.reduce_sum(self.voxels[i], 1),
+          #                      tf.logical_and(tf.less(v[i], tf.constant(0.5)), tf.less(tf.constant(0.0), v[i])): lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 0), [False, True])},
+          #                      # tf.less(v[i], tf.constant(1.0)): lambda: tf.reverse(tf.reduce_sum(self.voxels, 1), [False, False, True])},
+          #                    default=lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 1), [False, True]),
+          #                    exclusive=True)
+          #      img = tf.sub(tf.ones_like(img), tf.exp(tf.mul(img, -self.tau)))
+          #      #if i == 0:
+          #      #    self.img0 = img
+          #      rendered_imgs.append(img)
+
+          #  self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
+
+            f0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 32*32, scope='g_f0')
+            f0 = ops.lrelu(self.g_bnf0(f0))
+            h0 = ops.linear(f0, 32*32, 4*4*32*8, scope='g_h0')
+            h0 = tf.reshape(h0, [-1, 4, 4, 32*8])
             h0 = ops.lrelu(self.g_bn0(h0))
-            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 16], name='g_h1')
+            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 32*4], name='g_h1')
             h1 = ops.lrelu(self.g_bn1(h1))
-            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 8], name='g_h2')
+            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 32*2], name='g_h2')
             h2 = ops.lrelu(self.g_bn2(h2))
-            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 1], name='g_h3')
+            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 32], name='g_h3')
             h3 = ops.lrelu(self.g_bn3(h3))
             self.voxels = h3
             self.final_imgs = self.voxels

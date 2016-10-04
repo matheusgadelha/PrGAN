@@ -59,6 +59,13 @@ class RenderUtils:
     def color4(c):
         glColor4f(c[0], c[1], c[2], c[3])
 
+    @staticmethod
+    def draw_line(v1, v2):
+        glBegin(GL_LINES)
+        RenderUtils.vertex(v1)
+        RenderUtils.vertex(v2)
+        glEnd()
+
 
 class Sphere(object):
 
@@ -136,7 +143,6 @@ class GLWindow(object):
         glutIdleFunc(GLWindow.displayWrapper)
         glutMouseFunc(GLWindow.mouseWrapper)
         glutMotionFunc(GLWindow.motionWrapper)
-
 
         self.initialize()
 

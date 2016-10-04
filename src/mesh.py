@@ -11,6 +11,7 @@ def normalize(v):
         return v
     return v/norm
 
+
 class Mesh(object):
 
     def __init__(self, path=None, vertices=None, indices=None, colors=None):
@@ -21,30 +22,76 @@ class Mesh(object):
         self.face_normals = []
 
         if path is not None:
-            for line in open(path, "r"):
-                if line.startswith('#'):
-                    continue
-                values = line.split()
-                if not values:
-                    continue
-                if values[0] == 'v':
-                    v = np.array([float(v) for v in values[1:4]])
-                    self.vertices.append(v)
-                elif values[0] == 'vn':
-                    v = np.array([float(v) for v in values[1:4]])
-                    self.normals.append(v)
-                elif values[0] == 'f':
-                    self.indices.append(int(values[1].split("/")[0])-1)
-                    self.indices.append(int(values[2].split("/")[0])-1)
-                    self.indices.append(int(values[3].split("/")[0])-1)
+            if path.split(".")[-1] == "obj":
+                for line in open(path, "r"):
+                    if line.startswith('#'):
+                        continue
+                    values = line.split()
+                    if not values:
+                        continue
+                    if values[0] == 'v':
+                        v = np.array([float(v) for v in values[1:4]])
+                        self.vertices.append(v)
+                    elif values[0] == 'vn':
+                        v = np.array([float(v) for v in values[1:4]])
+                        self.normals.append(v)
+                    elif values[0] == 'f':
+                        self.indices.append(int(values[1].split("/")[0])-1)
+                        self.indices.append(int(values[2].split("/")[0])-1)
+                        self.indices.append(int(values[3].split("/")[0])-1)
+
+            elif path.split(".")[-1] == "off":
+                with open(path, "r") as f:
+                    lines = f.readlines()
+                    nverts = 0
+                    nfaces = 0
+                    for i in range(0, len(lines)):
+                        if i == 0:
+                            continue
+
+                        if i == 1:
+                            values = lines[i].split()
+                            nverts = int(values[0])
+                            nfaces = int(values[1])
+
+                        if i > 1 and i <= 1 + nverts:
+                            values = lines[i].split()
+                            v = np.array([float(v) for v in values])
+                            self.vertices.append(v)
+
+                        if i > 1 + nverts and i <= 1 + nverts + nfaces:
+                            values = lines[i].split()
+                            idxs = [int(idx) for idx in values[1:4]]
+                            self.indices.append(idxs[0])
+                            self.indices.append(idxs[1])
+                            self.indices.append(idxs[2])
         else:
             self.vertices = vertices
             self.indices = indices
-            self.colors = colors
+            self.colors = color
+
+        self.colors = np.zeros((len(self.vertices), 3))
+        self.vertices = np.array(self.vertices)
+
+        yverts = self.vertices[:, 1].copy()
+        self.vertices[:, 1] = self.vertices[:, 2]
+        self.vertices[:, 2] = yverts
+
+        self.center_vertices()
+        self.rescale()
 
         self.compute_areas()
         self.area_prob = np.array(self.areas)*(1./np.sum(self.areas))
-        self.compute_normals()
+        # self.compute_normals()
+
+    def center_vertices(self):
+        self.vertices = np.array(self.vertices)
+        barycenter = np.sum(self.vertices, axis=0)/float(len(self.vertices))
+        self.vertices -= barycenter
+
+    def rescale(self):
+        scale_factor = np.amax(self.vertices)
+        self.vertices *= 1./scale_factor
 
     def compute_face_normals(self):
         n_triangles = len(self.indices) / 3
@@ -53,6 +100,9 @@ class Mesh(object):
             e1 = t[1] - t[0]
             e2 = t[2] - t[0]
             self.face_normals.append(normalize(np.cross(e1, e2)))
+
+    def num_faces(self):
+        return len(self.indices) / 3
 
     def compute_normals(self):
         self.compute_face_normals()
@@ -63,16 +113,26 @@ class Mesh(object):
             for f_i in faces:
                 total_area += self.areas[f_i]
                 normal += self.face_normals[f_i] * self.areas[f_i]
-            normal *= 1./total_area
-            self.normals.append(normalize(normal))
+            if total_area > 0.0:
+                normal *= 1./total_area
+                self.normals.append(normalize(normal))
+            else:
+                self.normals.append(np.array([0, 0, 0]))
 
     def draw(self):
         glBegin(GL_TRIANGLES)
         for i in self.indices:
-            RenderUtils.normal(self.normals[i])
+            # RenderUtils.normal(self.normals[i])
             RenderUtils.color(self.colors[i])
             RenderUtils.vertex(self.vertices[i])
         glEnd()
+
+    def draw_normals(self):
+        size = 0.1
+        for n_i, n in enumerate(self.normals):
+            RenderUtils.draw_line(
+                self.vertices[n_i],
+                self.vertices[n_i] + size * n)
 
     def get_samples(self, n):
         n_triangles = len(self.indices) / 3
@@ -124,7 +184,6 @@ class Mesh(object):
 
             area = np.linalg.norm(np.cross(e1, e2))/2.
             self.areas.append(area)
-
 
 
 class Ray(object):

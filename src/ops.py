@@ -233,7 +233,19 @@ def load_imgbatch(img_paths, color=True):
             img = mpimg.imread(path)
             img = np.reshape(img, (img.shape[0], img.shape[1], 1))
             images.append(img)
-    return np.array(images)
+
+
+def load_voxelbatch(voxel_paths):
+    voxels = []
+    for path in voxel_paths:
+        voxels.append(np.load(path))
+    return np.array(voxels)
+
+
+def save_voxels(voxels, folder):
+    basename="/chair{}.npy"
+    for i in range(voxels.shape[0]):
+        np.save(folder+basename.format(i), voxels[i, :, :, :])
 
 
 def tryint(s):
