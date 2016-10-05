@@ -165,6 +165,25 @@ class MeshViewer(GLWindow):
         # self.mesh.draw_normals()
 
 
+def volume_to_points(volume, threshold=0, dim=[2., 2., 2.]):
+    o = np.array([-dim[0]/2., -dim[1]/2., -dim[2]/2.])
+    step = np.array([dim[0]/volume.shape[0], dim[1]/volume.shape[1], dim[2]/volume.shape[2]])
+    points = []
+    for x in range(volume.shape[0]):
+        for y in range(volume.shape[1]):
+            for z in range(volume.shape[2]):
+                pos = o + np.array([x, y, z]) * step
+                if volume[x, y, z] > threshold:
+                    points.append(pos)
+    return points
+
+
+def write_points_obj(path, points):
+    f = open(path, 'w')
+    for p in points:
+        f.write("v {} {} {}\n".format(p[0], p[1], p[2]))
+
+
 if __name__ == '__main__':
     mesh_files = glob.glob("models/chairs/*.off")
     total = len(mesh_files)
@@ -172,7 +191,9 @@ if __name__ == '__main__':
     for mf in mesh_files:
         m = Mesh(mf)
         vs = voxelize(m)
-        path = mf.split('.')[0]+'.npy'
-        np.save(path, vs)
+        pts = volume_to_points(vs)
+        path = mf.split('.')[0]
+        np.save(path+'.npy', vs)
+        write_points_obj(path+'.obj', pts)
         progress(count, total)
         count += 1

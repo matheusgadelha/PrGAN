@@ -7,7 +7,7 @@ import os
 class RenderGAN:
 
     def __init__(self, sess=tf.Session(), image_size=(32, 32), z_size=101,
-                 n_iterations=50, batch_size=64, lrate=0.002, d_size=64):
+                 n_iterations=200, batch_size=64, lrate=0.002, d_size=64):
 
         self.image_size = image_size
         self.n_iterations = n_iterations
@@ -121,7 +121,7 @@ class RenderGAN:
                     self.session.run(self.D_optim, feed_dict={self.images: imgs_batch, self.z: batch_z})
                 # Update generator
                 if train_generator:
-                    for i in xrange(10):
+                    for i in xrange(1):
                         self.session.run(self.G_optim, feed_dict={self.z: batch_z})
 
                 if batch_i % 20 == 0:
@@ -142,12 +142,12 @@ class RenderGAN:
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        h0 = ops.conv2d(image, self.d_size, name='d_h0_conv')
-        h0 = ops.lrelu(h0)
-        h1 = ops.conv2d(h0, self.d_size*2, name='d_h1_conv')
-        h1 = ops.lrelu(h1)
-        h2 = ops.conv2d(h1, self.d_size*4, name='d_h2_conv')
-        h2 = ops.lrelu(h2)
+        h0 = ops.conv3d(image, self.d_size, name='d_h0_conv')
+        h0 = ops.lrelu(self.d_bn0(h0))
+        h1 = ops.conv3d(h0, self.d_size*2, name='d_h1_conv')
+        h1 = ops.lrelu(self.d_bn1(h1))
+        h2 = ops.conv3d(h1, self.d_size*4, name='d_h2_conv')
+        h2 = ops.lrelu(self.d_bn2(h2))
         h2 = tf.reshape(h2, [self.batch_size, -1])
         h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
 
@@ -185,18 +185,16 @@ class RenderGAN:
 
           #  self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
 
-            f0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 32*32, scope='g_f0')
-            f0 = ops.lrelu(self.g_bnf0(f0))
-            h0 = ops.linear(f0, 32*32, 4*4*32*8, scope='g_h0')
-            h0 = tf.reshape(h0, [-1, 4, 4, 32*8])
-            h0 = ops.lrelu(self.g_bn0(h0))
-            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 32*4], name='g_h1')
-            h1 = ops.lrelu(self.g_bn1(h1))
-            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 32*2], name='g_h2')
-            h2 = ops.lrelu(self.g_bn2(h2))
-            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 32], name='g_h3')
-            h3 = ops.lrelu(self.g_bn3(h3))
-            self.voxels = h3
+            h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*4, scope='g_f0')
+            h0 = tf.reshape(h0, [-1, 4, 4, 4, 1])
+            h0 = tf.nn.relu(self.g_bn0(h0))
+            h1 = ops.deconv3d(h0, [self.batch_size, 8, 8, 8, 1], name='g_h1')
+            h1 = tf.nn.relu(self.g_bn1(h1))
+            h2 = ops.deconv3d(h1, [self.batch_size, 16, 16, 16, 1], name='g_h2')
+            h2 = tf.nn.relu(self.g_bn2(h2))
+            h3 = ops.deconv3d(h2, [self.batch_size, 32, 32, 32, 1], name='g_h3')
+            h3 = tf.nn.relu(self.g_bn3(h3))
+            self.voxels = tf.reshape(h3, [-1, 32, 32, 32])
             self.final_imgs = self.voxels
         return self.final_imgs
 
