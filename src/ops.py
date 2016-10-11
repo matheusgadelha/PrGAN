@@ -8,10 +8,11 @@ import re
 
 class batch_norm(object):
     """Code modification of http://stackoverflow.com/a/33950177"""
-    def __init__(self, epsilon=1e-5, momentum=0.9, name="batch_norm"):
+    def __init__(self, dim=2, epsilon=1e-5, momentum=0.9, name="batch_norm"):
         with tf.variable_scope(name):
             self.epsilon = epsilon
             self.momentum = momentum
+            self.dim = dim
 
             self.ema = tf.train.ExponentialMovingAverage(decay=self.momentum)
             self.name = name
@@ -28,7 +29,7 @@ class batch_norm(object):
 
                 # Remove 2 from list to work with fully connected
                 # TODO: fix this issue
-                batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2], name='moments')
+                batch_mean, batch_var = tf.nn.moments(x, range(self.dim+1), name='moments')
                 ema_apply_op = self.ema.apply([batch_mean, batch_var])
                 self.ema_mean, self.ema_var = self.ema.average(batch_mean), self.ema.average(batch_var)
 
@@ -81,43 +82,43 @@ class batch_norm_linear(object):
 
 
 def minibatch(input, num_kernels=300, kernel_dim=50, batch_size=64):
+#
+#    n_kernels = num_kernels
+#    dim_per_kernel = kernel_dim
+#    x = linear(input, input.get_shape()[1], n_kernels * dim_per_kernel, scope="d_mbd")
+#    activation = tf.reshape(x, (batch_size, n_kernels, dim_per_kernel))
+#
+#    big = np.zeros((batch_size, batch_size), dtype='float32')
+#    big += np.eye(batch_size)
+#    big = tf.expand_dims(big, 1)
+#
+#    abs_dif = tf.reduce_sum(tf.abs(tf.expand_dims(activation, 3) - tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)), 2)
+#    mask = 1. - big
+#    masked = tf.exp(-abs_dif) * mask
+#
+#    def half(tens, second):
+#        m, n, _ = tens.get_shape()
+#        m = int(m)
+#        n = int(n)
+#        return tf.slice(tens, [0, 0, second * batch_size], [m, n, batch_size])
+#    # TODO: speedup by allocating the denominator directly instead of constructing it by sum
+#    #       (current version makes it easier to play with the mask and not need to rederive
+#    #        the denominator)
+#    f1 = tf.reduce_sum(half(masked, 0), 2) / tf.reduce_sum(half(mask, 0))
+#    f2 = tf.reduce_sum(half(masked, 1), 2) / tf.reduce_sum(half(mask, 1))
+#
+#    minibatch_features = [f1, f2]
+#
+#    x = tf.concat(1, [input] + minibatch_features)
+#    return x
 
-    n_kernels = num_kernels
-    dim_per_kernel = kernel_dim
-    x = linear(input, input.get_shape()[1], n_kernels * dim_per_kernel, scope="d_mbd")
-    activation = tf.reshape(x, (batch_size, n_kernels, dim_per_kernel))
-
-    big = np.zeros((batch_size, batch_size), dtype='float32')
-    big += np.eye(batch_size)
-    big = tf.expand_dims(big, 1)
-
-    abs_dif = tf.reduce_sum(tf.abs(tf.expand_dims(activation, 3) - tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)), 2)
-    mask = 1. - big
-    masked = tf.exp(-abs_dif) * mask
-
-    def half(tens, second):
-        m, n, _ = tens.get_shape()
-        m = int(m)
-        n = int(n)
-        return tf.slice(tens, [0, 0, second * batch_size], [m, n, batch_size])
-    # TODO: speedup by allocating the denominator directly instead of constructing it by sum
-    #       (current version makes it easier to play with the mask and not need to rederive
-    #        the denominator)
-    f1 = tf.reduce_sum(half(masked, 0), 2) / tf.reduce_sum(half(mask, 0))
-    f2 = tf.reduce_sum(half(masked, 1), 2) / tf.reduce_sum(half(mask, 1))
-
-    minibatch_features = [f1, f2]
-
-    x = tf.concat(1, [input] + minibatch_features)
-    return x
-
-   # x = linear(input, input.get_shape()[1], num_kernels * kernel_dim)
-   # activation = tf.reshape(x, (-1, num_kernels, kernel_dim))
-   # diffs = tf.expand_dims(activation, 3) - \
-   #     tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)
-   # abs_diffs = tf.reduce_sum(tf.abs(diffs), 2)
-   # minibatch_features = tf.reduce_sum(tf.exp(-abs_diffs), 2)
-   # return tf.concat(1, [input, minibatch_features])
+    x = linear(input, input.get_shape()[1], num_kernels * kernel_dim)
+    activation = tf.reshape(x, (-1, num_kernels, kernel_dim))
+    diffs = tf.expand_dims(activation, 3) - \
+        tf.expand_dims(tf.transpose(activation, [1, 2, 0]), 0)
+    abs_diffs = tf.reduce_sum(tf.abs(diffs), 2)
+    minibatch_features = tf.reduce_sum(tf.exp(-abs_diffs), 2)
+    return tf.concat(1, [input, minibatch_features])
 
 
 def lrelu(x, leak=0.2, name="lrelu"):
@@ -206,12 +207,12 @@ def deconv3d(input_, output_shape,
         w = tf.get_variable('w', [k_d, k_h, k_w, output_shape[-1], input_.get_shape()[-1]],
                             initializer=tf.random_normal_initializer(stddev=stddev))
         try:
-            deconv = tf.nn.conv3d_transpose(input_, w, output_shape=[output_shape], strides=[1, d_d, d_h, d_w, 1])
+            deconv = tf.nn.conv3d_transpose(input_, w, output_shape=output_shape, strides=[1, d_d, d_h, d_w, 1])
         except AttributeError:
             print "This tensorflow version does not supprot tf.nn.conv3d_transpose."
 
         biases = tf.get_variable('biases', [output_shape[-1]], initializer=tf.constant_initializer(0.0))
-        deconv = tf.reshape(tf.nn.bias_add(deconv, biases), deconv.get_shape())
+        deconv = tf.nn.bias_add(deconv, biases)
 
         if with_w:
             return deconv, w, biases
@@ -220,6 +221,9 @@ def deconv3d(input_, output_shape,
 
 
 def l2norm_sqrd(a, b): return tf.reduce_sum(tf.pow(a-b, 2), 1)
+
+
+def l2(a, b): return tf.reduce_sum(tf.pow(a-b, 2))
 
 
 def show_graph_operations():
@@ -251,7 +255,7 @@ def load_voxelbatch(voxel_paths):
     voxels = []
     for path in voxel_paths:
         voxels.append(np.load(path))
-    return np.array(voxels)
+    return (np.array(voxels)*2) - 1.
 
 
 def save_voxels(voxels, folder):
