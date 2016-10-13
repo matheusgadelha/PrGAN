@@ -249,6 +249,7 @@ def load_imgbatch(img_paths, color=True):
             img = mpimg.imread(path)
             img = np.reshape(img, (img.shape[0], img.shape[1], 1))
             images.append(img)
+    return images
 
 
 def load_voxelbatch(voxel_paths):
