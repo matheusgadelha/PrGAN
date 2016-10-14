@@ -65,12 +65,12 @@ class Mesh(object):
                             self.indices.append(idxs[0])
                             self.indices.append(idxs[1])
                             self.indices.append(idxs[2])
+            self.colors = None
         else:
             self.vertices = vertices
             self.indices = indices
             self.colors = color
 
-        self.colors = np.zeros((len(self.vertices), 3))
         self.vertices = np.array(self.vertices)
 
         yverts = self.vertices[:, 1].copy()
@@ -90,7 +90,7 @@ class Mesh(object):
         self.vertices -= barycenter
 
     def rescale(self):
-        scale_factor = np.amax(self.vertices)
+        scale_factor = np.amax(np.abs(self.vertices))
         self.vertices *= 1./scale_factor
 
     def compute_face_normals(self):
@@ -123,7 +123,8 @@ class Mesh(object):
         glBegin(GL_TRIANGLES)
         for i in self.indices:
             # RenderUtils.normal(self.normals[i])
-            RenderUtils.color(self.colors[i])
+            if self.colors != None:
+                RenderUtils.color(self.colors[i])
             RenderUtils.vertex(self.vertices[i])
         glEnd()
 
