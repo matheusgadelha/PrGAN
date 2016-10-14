@@ -66,6 +66,13 @@ class RenderUtils:
         RenderUtils.vertex(v2)
         glEnd()
 
+    @staticmethod
+    def draw_points(s):
+        glBegin(GL_POINTS)
+        for i in s:
+            RenderUtils.vertex(i)
+        glEnd()
+
 
 class Sphere(object):
 
