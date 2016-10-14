@@ -3,7 +3,6 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
 import numpy as np
-import ops
 import glob
 
 from renderutils import Camera
@@ -12,6 +11,7 @@ from renderutils import RenderUtils
 from renderutils import progress
 
 from mesh import Mesh
+
 
 def project(vertices, axis):
     vmin = np.inf
@@ -41,9 +41,8 @@ class Box(object):
         z0 = self.center[2] - self.size/2.
         z1 = self.center[2] + self.size/2.
 
-        inside = x0 < point[0] < x1 and\
-                 y0 < point[1] < y1 and\
-                 z0 < point[2] < z1
+        inside = x0 < point[0] < x1 and y0 < point[1] < y1 and\
+            z0 < point[2] < z1
 
         return inside
 
@@ -111,12 +110,14 @@ def voxelize(mesh, size=np.array([32., 32., 32.]), dims=np.array([2., 2., 2.])):
 
 
 class MeshViewer(GLWindow):
-    def __init__(self, window_name="Mesh Viewer", window_size=(640,640)):
+
+    def __init__(self, window_name="Mesh Viewer", window_size=(640, 640)):
         super(MeshViewer, self).__init__(window_name, window_size)
         self.camera = Camera()
         self.origin = np.array([0, 0, 0])
 
-        self.mesh = Mesh("models/chairs/chair_0003.off")
+        self.mesh = Mesh("models/chairs/chair_0015.off")
+        self.samples = self.mesh.get_samples(1e4)
 
         self.camera_speed = 1/100.
         self.initialize()
@@ -159,8 +160,10 @@ class MeshViewer(GLWindow):
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.place()
-        RenderUtils.color([0, 0, 0])
+        RenderUtils.color([1, 1, 0])
         self.mesh.draw()
+        RenderUtils.color([0, 0, 1])
+        RenderUtils.draw_points(self.samples)
         # RenderUtils.color([0, 0, 1])
         # self.mesh.draw_normals()
 
@@ -185,6 +188,7 @@ def write_points_obj(path, points):
 
 
 if __name__ == '__main__':
+    mv = MeshViewer()
     mesh_files = glob.glob("models/chairs/*.off")
     total = len(mesh_files)
     count = 0
