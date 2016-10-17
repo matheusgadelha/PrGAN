@@ -188,7 +188,6 @@ def write_points_obj(path, points):
 
 
 if __name__ == '__main__':
-    mv = MeshViewer()
     mesh_files = glob.glob("models/chairs/*.off")
     total = len(mesh_files)
     count = 0
