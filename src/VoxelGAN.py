@@ -102,16 +102,18 @@ class RenderGAN:
                 imgs_batch = ops.load_voxelbatch(dataset_files[idxs_i])
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
 
-                dloss_fake = self.D_loss_fake.eval(session=self.session, feed_dict={self.z: batch_z})
-                dloss_real = self.D_loss_real.eval(session=self.session, feed_dict={self.images: imgs_batch})
+                dloss_fake = self.D_fake.eval(session=self.session, feed_dict={self.z: batch_z})
+                dloss_real = self.D_real.eval(session=self.session, feed_dict={self.images: imgs_batch})
                 gloss = self.G_loss.eval(session=self.session, feed_dict={self.z: batch_z, self.images: imgs_batch})
 
                 train_discriminator = True
                 train_generator = True
 
-                margin = 0.2
-                dloss_avg = (dloss_fake + dloss_real)*0.5
-                if dloss_avg < margin:
+                margin = 0.8
+                dacc = 1. - (np.mean(np.abs(np.ones_like(dloss_real)-dloss_real)) + np.mean(dloss_fake))*0.5
+                #print np.mean(dloss_real)
+                #print np.mean(dloss_fake)
+                if dacc > margin:
                     train_discriminator = False
                 #if dloss_fake > 1.0-margin or dloss_real > 1.0-margin:
                 #    train_generator = False
@@ -136,8 +138,9 @@ class RenderGAN:
                     #ops.save_voxels(voxels, "results/chairs_voxel")
 
                 print "EPOCH[{}], BATCH[{}/{}]".format(epoch, batch_i, n_batches)
-                print "Discriminator Loss - Real:{} / Fake:{} - Total:{}".format(dloss_real, dloss_fake,
-                                                                                 dloss_real + dloss_fake)
+               # print "Discriminator Loss - Real:{} / Fake:{} - Total:{}".format(dloss_real, dloss_fake,
+               #                                                                  dloss_real + dloss_fake)
+                print "Discriminator avg acc: {}".format(dacc)
                 print "Generator Loss:{}".format(gloss)
                 self.history["generator"].append(gloss)
                 self.history["discriminator_real"].append(dloss_real)
