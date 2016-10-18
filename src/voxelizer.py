@@ -95,7 +95,7 @@ class Box(object):
         return False
 
 
-def voxelize(mesh, size=np.array([32., 32., 32.]), dims=np.array([2., 2., 2.])):
+def voxelize(mesh, size=np.array([32., 32., 32.]), dims=np.array([2.5, 2.5, 2.5])):
 
     xs = np.linspace(-dims[0]/2., dims[0]/2., size[0]+1)
     ys = np.linspace(-dims[1]/2., dims[1]/2., size[1]+1)
