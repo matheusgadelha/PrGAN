@@ -95,13 +95,17 @@ class Box(object):
         return False
 
 
+def center_samples(s):
+    return s-np.mean(s, 0)
+
+
 def voxelize(mesh, size=np.array([32., 32., 32.]), dims=np.array([2.5, 2.5, 2.5])):
 
     xs = np.linspace(-dims[0]/2., dims[0]/2., size[0]+1)
     ys = np.linspace(-dims[1]/2., dims[1]/2., size[1]+1)
     zs = np.linspace(-dims[2]/2., dims[2]/2., size[2]+1)
 
-    samples = np.array(mesh.get_samples(1e4))
+    samples = center_samples(np.array(mesh.get_samples(1e4)))
 
     voxels, _ = np.histogramdd(samples, bins=(xs, ys, zs))
     voxels = np.clip(voxels, 0, 1)
@@ -116,8 +120,9 @@ class MeshViewer(GLWindow):
         self.camera = Camera()
         self.origin = np.array([0, 0, 0])
 
-        self.mesh = Mesh("models/chairs/chair_0015.off")
-        self.samples = self.mesh.get_samples(1e4)
+        self.mesh = Mesh("models/chairs/chair_0305.off")
+        self.samples = self.mesh.get_samples(1e3)
+        self.samples = center_samples(self.samples)
 
         self.camera_speed = 1/100.
         self.initialize()
