@@ -78,4 +78,5 @@ class PointCloudViewer(GLWindow):
         # self.mesh.draw_normals()
 
 if __name__ == '__main__':
+    print "Use < and > keys to change the point selection threshold."
     pv = PointCloudViewer(sys.argv[1])

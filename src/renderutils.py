@@ -68,6 +68,7 @@ class RenderUtils:
 
     @staticmethod
     def draw_points(s):
+        glPointSize(2.0)
         glBegin(GL_POINTS)
         for i in s:
             RenderUtils.vertex(i)
@@ -149,6 +150,7 @@ class GLWindow(object):
         glutDisplayFunc(GLWindow.displayWrapper)
         glutIdleFunc(GLWindow.displayWrapper)
         glutMouseFunc(GLWindow.mouseWrapper)
+        glutKeyboardFunc(GLWindow.keyboardWrapper)
         glutMotionFunc(GLWindow.motionWrapper)
 
         self.initialize()
@@ -164,6 +166,9 @@ class GLWindow(object):
         pass
 
     def motion(self, x, y):
+        pass
+
+    def keyboard(self, k, x, y):
         pass
 
     @staticmethod
@@ -186,6 +191,10 @@ class GLWindow(object):
     @staticmethod
     def motionWrapper(x, y):
         GLWindow.get_instance().motion(x, y)
+
+    @staticmethod
+    def keyboardWrapper(k, x, y):
+        GLWindow.get_instance().keyboard(k, x, y)
 
     @staticmethod
     def initializeWrapper():
