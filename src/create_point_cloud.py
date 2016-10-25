@@ -14,7 +14,7 @@ if __name__ == '__main__':
     total = len(voxels_path)
     for p in voxels_path:
         vs = np.load(p)
-        pts = vox.volume_to_points(vs)
+        pts = vox.volume_to_points(vs, threshold=0.1)
         path = p.split('.')[0]
         vox.write_points_obj(path+'.obj', pts)
         progress(count, total)
