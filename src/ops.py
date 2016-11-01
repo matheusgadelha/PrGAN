@@ -28,6 +28,83 @@ class BatchNormalization(object):
         return tf.cond(self.train, with_update, lambda: (self.ema.average(mean), self.ema.average(variance)))
 
 
+def flatten(t) : return tf.reshape(t, [1, -1])
+
+
+def rot_matrix(s):
+
+    i = tf.cast((s+1)*2, 'int32')
+    vp = tf.constant([0, np.pi/2.0, np.pi, 3*np.pi/2.0])
+
+    theta = tf.gather(vp, i)
+    phi = 0.0
+
+    #theta = (s[0] + 1.0) * np.pi
+    #phi = s[1] * np.pi/2.0
+
+    sin_theta = tf.sin(theta)
+    cos_theta = tf.cos(theta)
+    sin_phi = tf.sin(phi)
+    cos_phi = tf.cos(phi)
+
+    ry = [[cos_theta, 0, sin_theta], [0, 1, 0], [-sin_theta, 0, cos_theta]]
+    rx = [[1, 0, 0], [0, cos_phi, -sin_phi], [0, sin_phi, cos_phi]]
+
+    #return tf.matmul(rx, ry)
+    return ry
+
+'''This is a hack. One day tensorflow will have gather_nd properly implemented with backprop.
+Until then, use this function'''
+def gather_nd(params, indices, name=None):
+    shape = params.get_shape().as_list()
+    rank = len(shape)
+    flat_params = tf.reshape(params, [-1])
+    multipliers = [reduce(lambda x, y: x*y, shape[i+1:], 1) for i in range(0, rank)]
+    indices_unpacked = tf.unpack(tf.transpose(indices, [rank - 1] + range(0, rank - 1), name))
+    flat_indices = sum([a*b for a,b in zip(multipliers, indices_unpacked)])
+    return tf.gather(flat_params, flat_indices, name=name)
+
+
+def grid_coord(h, w, d):
+    xl = tf.linspace(-1.0, 1.0, w)
+    yl = tf.linspace(-1.0, 1.0, h)
+    zl = tf.linspace(-1.0, 1.0, d)
+
+    xs, ys, zs = tf.meshgrid(xl, yl, zl, indexing='ij')
+    g = tf.concat(0,[flatten(xs), flatten(ys), flatten(zs)])
+    return g
+
+
+def transform_volume(v, t):
+    height = int(v.get_shape()[0])
+    width = int(v.get_shape()[1])
+    depth = int(v.get_shape()[2])
+    grid = grid_coord(height, width, depth)
+
+    xs = grid[0, :]
+    ys = grid[1, :]
+    zs = grid[2, :]
+
+    idxs_f = tf.transpose(tf.pack([xs, ys, zs]))
+    idxs_f = tf.matmul(idxs_f, t)
+
+    xs_t = (idxs_f[:, 0] + 1.0) * float(width) / 2.0
+    ys_t = (idxs_f[:, 1] + 1.0) * float(height) / 2.0
+    zs_t = (idxs_f[:, 2] + 1.0) * float(depth) / 2.0
+
+    idxs = tf.cast(tf.pack([xs_t, ys_t, zs_t], axis=1), 'int32')
+    idxs = tf.clip_by_value(idxs, 0, 32)
+    idxs = tf.expand_dims(idxs, 0)
+
+    return tf.reshape(gather_nd(v, idxs), v.get_shape())
+
+
+def project(v, tau=1):
+    p = tf.reduce_sum(v, 2)
+    p = tf.ones_like(p) - tf.exp(-p*tau)
+    return tf.reverse(tf.transpose(p), [True, False])
+
+
 class batch_norm_linear(object):
     """Code modification of http://stackoverflow.com/a/33950177"""
     def __init__(self, epsilon=1e-5, momentum=0.9, name="batch_norm"):
