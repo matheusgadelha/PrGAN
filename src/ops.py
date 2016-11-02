@@ -32,9 +32,8 @@ def flatten(t) : return tf.reshape(t, [1, -1])
 
 
 def rot_matrix(s):
-
-    i = tf.cast((s+1)*2, 'int32')
-    vp = tf.constant([0, np.pi/2.0, np.pi, 3*np.pi/2.0])
+    i = tf.cast((s+1)*4, 'int32')
+    vp = tf.constant([0, np.pi/4.0, np.pi/2.0, 3*np.pi/4.0, np.pi, 5*np.pi/4.0, 3*np.pi/2.0, 7*np.pi/4.0])
 
     theta = tf.gather(vp, i)
     phi = 0.0
