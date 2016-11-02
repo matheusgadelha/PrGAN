@@ -15,7 +15,7 @@ class ImplicitGAN:
         self.lrate = lrate
         self.session = sess
         self.base_dim = 512
-        self.d_size = 256
+        self.d_size = 512
         self.z_size = z_size
         self.tau = 1
         self.dataset_name = "chairs_canonical"
@@ -159,9 +159,9 @@ class ImplicitGAN:
         reshaped_img = tf.reshape(image, [self.batch_size, self.image_size[0], self.image_size[1], 1])
         h0 = ops.conv2d(reshaped_img, self.d_size, name='d_h0_conv')
         h0 = ops.lrelu(self.d_bn0(h0, train))
-        h1 = ops.conv2d(h0, self.d_size*2, name='d_h1_conv')
+        h1 = ops.conv2d(h0, self.d_size, name='d_h1_conv')
         h1 = ops.lrelu(self.d_bn1(h1, train))
-        h2 = ops.conv2d(h1, self.d_size*4, name='d_h2_conv')
+        h2 = ops.conv2d(h1, self.d_size, name='d_h2_conv')
         h2_tensor = ops.lrelu(self.d_bn2(h2, train))
         h2 = tf.reshape(h2_tensor, [self.batch_size, -1])
         h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
@@ -184,7 +184,7 @@ class ImplicitGAN:
           #  h3 = ops.lrelu(self.g_bn4(h3))
           #  self.voxels = h3
 
-            base_filters = self.d_size
+            base_filters = self.d_size/2
             h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*4*base_filters, scope='g_f0')
             h0 = tf.reshape(h0, [self.batch_size, 4, 4, 4, base_filters])
             h0 = tf.nn.relu(self.g_bn0(h0, train))
