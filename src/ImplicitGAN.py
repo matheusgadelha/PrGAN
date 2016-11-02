@@ -25,14 +25,14 @@ class ImplicitGAN:
         self.size = image_size[0]
         self.logpath = "log"
 
-        self.g_bn0 = ops.BatchNormalization([self.d_size], 'g_bn0')
-        self.g_bn1 = ops.BatchNormalization([self.d_size/2], 'g_bn1')
-        self.g_bn2 = ops.BatchNormalization([self.d_size/4], 'g_bn2')
-        self.g_bn3 = ops.BatchNormalization([self.d_size/8], 'g_bn2')
+        self.g_bn0 = ops.BatchNormalization([self.d_size/2], 'g_bn0')
+        self.g_bn1 = ops.BatchNormalization([self.d_size/4], 'g_bn1')
+        self.g_bn2 = ops.BatchNormalization([self.d_size/8], 'g_bn2')
+        self.g_bn3 = ops.BatchNormalization([self.d_size/16], 'g_bn2')
 
-        self.d_bn0 = ops.BatchNormalization([self.d_size/2], 'd_bn0')
-        self.d_bn1 = ops.BatchNormalization([self.d_size], 'd_bn1')
-        self.d_bn2 = ops.BatchNormalization([self.d_size*2], 'd_bn2')
+        self.d_bn0 = ops.BatchNormalization([self.d_size], 'd_bn0')
+        self.d_bn1 = ops.BatchNormalization([self.d_size*2], 'd_bn1')
+        self.d_bn2 = ops.BatchNormalization([self.d_size*4], 'd_bn2')
 
         self.history = {}
         self.history["generator"] = []
