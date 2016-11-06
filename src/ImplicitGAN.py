@@ -1,13 +1,30 @@
 import tensorflow as tf
+
 import numpy as np
 import ops
 import glob
 import os
+import argparse
+
+parser = argparse.ArgumentParser(description='This program trains a PrGAN model.')
+parser.add_argument("-e", "--epochs", type=int, help="Number training epochs.", default=50)
+parser.add_argument("-bs", "--batch_size", type=int, help="Minibatch size.", default=64)
+parser.add_argument("-d", "--dataset", type=str,
+                    help="Dataset name. There must be a folder insde of the data folder with the same name.",
+                    default="chairs_canonical")
+
+def create_folder(path):
+    if os.path.exists(path):
+        return
+    else:
+        print "Folder {} not found. Creating one...".format(path)
+        os.makedirs(path)
+        print "Done."
 
 class ImplicitGAN:
 
     def __init__(self, sess=tf.Session(), image_size=(32, 32), z_size=201,
-                 n_iterations=1000, batch_size=64, lrate=0.002, d_size=64):
+                 n_iterations=50, dataset="None", batch_size=64, lrate=0.002, d_size=64):
 
         self.image_size = image_size
         self.n_iterations = n_iterations
@@ -15,20 +32,20 @@ class ImplicitGAN:
         self.lrate = lrate
         self.session = sess
         self.base_dim = 512
-        self.d_size = 512
+        self.d_size = 256
         self.z_size = z_size
         self.tau = 1
-        self.dataset_name = "chairs_canonical"
+        self.dataset_name = dataset
         #self.alpha = tf.constant(1e-6)
         self.alpha = tf.constant(0.0)
         self.beta = tf.constant(0.0)
         self.size = image_size[0]
         self.logpath = "log"
 
-        self.g_bn0 = ops.BatchNormalization([self.d_size/2], 'g_bn0')
-        self.g_bn1 = ops.BatchNormalization([self.d_size/4], 'g_bn1')
-        self.g_bn2 = ops.BatchNormalization([self.d_size/8], 'g_bn2')
-        self.g_bn3 = ops.BatchNormalization([self.d_size/16], 'g_bn2')
+        self.g_bn0 = ops.BatchNormalization([self.d_size], 'g_bn0')
+        self.g_bn1 = ops.BatchNormalization([self.d_size/2], 'g_bn1')
+        self.g_bn2 = ops.BatchNormalization([self.d_size/4], 'g_bn2')
+        self.g_bn3 = ops.BatchNormalization([self.d_size/8], 'g_bn2')
 
         self.d_bn0 = ops.BatchNormalization([self.d_size], 'd_bn0')
         self.d_bn1 = ops.BatchNormalization([self.d_size*2], 'd_bn1')
@@ -72,7 +89,17 @@ class ImplicitGAN:
             self.G_optim = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss, var_list=self.G_vars)
             self.G_optim_classic = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss_classic, var_list=self.G_vars)
 
-            self.saver = tf.train.Saver()
+            self.saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
+
+    def load(self):
+        ckpt_folder = "checkpoint"
+        ckpt = tf.train.get_checkpoint_state(os.path.join(ckpt_folder, self.dataset_name))
+        if ckpt and ckpt.model_checkpoint_path:
+            print "Loading previous model..."
+            self.saver.restore(self.session, ckpt.model_checkpoint_path)
+            print "Done."
+        else:
+            print "No saved model found."
 
     def train(self):
         if not os.path.exists(os.path.join("data", self.dataset_name)):
@@ -83,8 +110,10 @@ class ImplicitGAN:
         dataset_files = np.array(dataset_files)
         n_files = dataset_files.shape[0]
         sample_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
+        training_step = 0
 
         self.session.run(tf.initialize_all_variables())
+        self.load()
         for epoch in xrange(self.n_iterations):
 
             rand_idxs = np.random.permutation(range(n_files))
@@ -129,20 +158,28 @@ class ImplicitGAN:
                 #if dacc > 0.9:
                 #    self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z})
                 #if dacc > margin + 1.0:
-                #    self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
                 self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
+                #self.session.run(self.G_optim, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
 
                 if batch_i % 50 == 0:
-                    #voxels = self.voxels.eval(session=self.session, feed_dict={self.z: sample_z})
                     rendered_images = self.G.eval(session=self.session, feed_dict={self.z: sample_z, self.images: imgs_batch, self.train_flag: False})
                     rendered_images = np.array(rendered_images)
+
                     voxels = self.voxels.eval(session=self.session, feed_dict={self.z: sample_z, self.images: imgs_batch, self.train_flag: False})
                     voxels = np.array(voxels)
-                    #ops.save_voxels(rendered_images, "results/chairs_voxel")
+
+                    create_folder("results/{}".format(self.dataset_name))
                     ops.save_images(rendered_images, [8, 8],
-                                    "results/voxelchairs{}.png".format(epoch*n_batches+batch_i))
+                                    "results/{}/{}.png".format(self.dataset_name, epoch*n_batches+batch_i))
                     ops.save_images(imgs_batch, [8, 8], "sanity_chairs.png")
-                    ops.save_voxels(voxels, "results/chairs_implicit_voxel")
+                    ops.save_voxels(voxels, "results/{}".format(self.dataset_name))
+
+                    print "Saving checkpoint..."
+                    create_folder('checkpoint/{}'.format(self.dataset_name))
+                    self.saver.save(self.session, 'checkpoint/{}/model.ckpt'.format(self.dataset_name),
+                                    global_step=training_step)
+                    print "***CHECKPOINT SAVED***"
+                training_step += 1
 
                 self.history["generator"].append(gloss)
                 self.history["discriminator_real"].append(dloss_real)
@@ -159,9 +196,9 @@ class ImplicitGAN:
         reshaped_img = tf.reshape(image, [self.batch_size, self.image_size[0], self.image_size[1], 1])
         h0 = ops.conv2d(reshaped_img, self.d_size, name='d_h0_conv')
         h0 = ops.lrelu(self.d_bn0(h0, train))
-        h1 = ops.conv2d(h0, self.d_size, name='d_h1_conv')
+        h1 = ops.conv2d(h0, self.d_size*2, name='d_h1_conv')
         h1 = ops.lrelu(self.d_bn1(h1, train))
-        h2 = ops.conv2d(h1, self.d_size, name='d_h2_conv')
+        h2 = ops.conv2d(h1, self.d_size*4, name='d_h2_conv')
         h2_tensor = ops.lrelu(self.d_bn2(h2, train))
         h2 = tf.reshape(h2_tensor, [self.batch_size, -1])
         h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
@@ -170,21 +207,7 @@ class ImplicitGAN:
 
     def generator(self, z_enc, train):
         with tf.variable_scope('gan'):
-          #  stddev = 2e-3
-          #  f0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 32*32, scope='g_f0')
-          #  f0 = ops.lrelu(self.g_bnf0(f0))
-          #  h0 = ops.linear(f0, 32*32, 4*4*32*16, scope='g_h0')
-          #  h0 = tf.reshape(h0, [-1, 4, 4, 32*16])
-          #  h0 = ops.lrelu(self.g_bn0(h0))
-          #  h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, 32*8], name='g_h1', stddev=stddev)
-          #  h1 = ops.lrelu(self.g_bn1(h1))
-          #  h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, 32*4], name='g_h2', stddev=stddev)
-          #  h2 = ops.lrelu(self.g_bn2(h2))
-          #  h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 32], name='g_h4', stddev=stddev)
-          #  h3 = ops.lrelu(self.g_bn4(h3))
-          #  self.voxels = h3
-
-            base_filters = self.d_size/2
+            base_filters = self.d_size
             h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*4*base_filters, scope='g_f0')
             h0 = tf.reshape(h0, [self.batch_size, 4, 4, 4, base_filters])
             h0 = tf.nn.relu(self.g_bn0(h0, train))
@@ -200,15 +223,6 @@ class ImplicitGAN:
             rendered_imgs = []
             for i in xrange(self.batch_size):
                 img = ops.project(ops.transform_volume(self.voxels[i], ops.rot_matrix(v[i])), self.tau)
-               # img = tf.case({tf.less(v[i], tf.constant(-0.5)): lambda: tf.reduce_sum(self.voxels[i], 0),
-               #                 tf.logical_and(tf.less(v[i], tf.constant(0.0)), tf.less(tf.constant(-0.5), v[i])): lambda: tf.reduce_sum(self.voxels[i], 1),
-               #                 tf.logical_and(tf.less(v[i], tf.constant(0.5)), tf.less(tf.constant(0.0), v[i])): lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 0), [False, True])},
-               #                 # tf.less(v[i], tf.constant(1.0)): lambda: tf.reverse(tf.reduce_sum(self.voxels, 1), [False, False, True])},
-               #               default=lambda: tf.reverse(tf.reduce_sum(self.voxels[i], 1), [False, True]),
-               #               exclusive=True)
-               # img = tf.sub(tf.ones_like(img), tf.exp(tf.mul(img, -self.tau)))
-                #if i == 0:
-                #    self.img0 = img
                 rendered_imgs.append(img)
 
             self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
@@ -232,7 +246,8 @@ class ImplicitGAN:
 
 
 def main():
-    rgan = ImplicitGAN()
+    args = parser.parse_args()
+    rgan = ImplicitGAN(n_iterations=args.epochs, batch_size=args.batch_size, dataset=args.dataset)
     rgan.train()
 
 
