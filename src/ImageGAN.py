@@ -6,7 +6,7 @@ import glob
 import os
 import argparse
 
-parser = argparse.ArgumentParser(description='This program trains a PrGAN model.')
+parser = argparse.ArgumentParser(description='This program trains an ImageGAN model.')
 parser.add_argument("-e", "--epochs", type=int, help="Number training epochs.", default=50)
 parser.add_argument("-bs", "--batch_size", type=int, help="Minibatch size.", default=64)
 parser.add_argument("-d", "--dataset", type=str,
@@ -23,7 +23,7 @@ def create_folder(path):
         os.makedirs(path)
         print "Done."
 
-class PrGAN:
+class ImageGAN:
 
     def __init__(self, sess=tf.Session(), image_size=(32, 32), z_size=201,
                  n_iterations=50, dataset="None", batch_size=64, lrate=0.002, d_size=64):
@@ -95,7 +95,7 @@ class PrGAN:
 
     def load(self):
         ckpt_folder = "checkpoint"
-        ckpt = tf.train.get_checkpoint_state(os.path.join(ckpt_folder, "PrGAN"+self.dataset_name))
+        ckpt = tf.train.get_checkpoint_state(os.path.join(ckpt_folder, "ImageGAN"+self.dataset_name))
         if ckpt and ckpt.model_checkpoint_path:
             print "Loading previous model..."
             self.saver.restore(self.session, ckpt.model_checkpoint_path)
@@ -156,29 +156,19 @@ class PrGAN:
                 if train_discriminator:
                     print "***Discriminator trained.***"
                     self.session.run(self.D_optim, feed_dict={self.images: imgs_batch, self.z: batch_z, self.train_flag: True})
-                # Update generator
-                #if dacc > 0.9:
-                #    self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z})
-                #if dacc > margin + 1.0:
                 self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
-                #self.session.run(self.G_optim, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
 
                 if batch_i % 50 == 0:
                     rendered_images = self.G.eval(session=self.session, feed_dict={self.z: sample_z, self.images: imgs_batch, self.train_flag: False})
                     rendered_images = np.array(rendered_images)
 
-                    voxels = self.voxels.eval(session=self.session, feed_dict={self.z: sample_z, self.images: imgs_batch, self.train_flag: False})
-                    voxels = np.array(voxels)
-
-                    create_folder("results/PrGAN{}".format(self.dataset_name))
+                    create_folder("results/ImageGAN{}".format(self.dataset_name))
                     ops.save_images(rendered_images, [8, 8],
-                                    "results/PrGAN{}/{}.png".format(self.dataset_name, epoch*n_batches+batch_i))
-                    ops.save_images(imgs_batch, [8, 8], "sanity_chairs.png")
-                    ops.save_voxels(voxels, "results/PrGAN{}".format(self.dataset_name))
+                                    "results/ImageGAN{}/{}.png".format(self.dataset_name, epoch*n_batches+batch_i))
 
                     print "Saving checkpoint..."
-                    create_folder('checkpoint/PrGAN{}'.format(self.dataset_name))
-                    self.saver.save(self.session, 'checkpoint/PrGAN{}/model.ckpt'.format(self.dataset_name),
+                    create_folder('checkpoint/ImageGAN{}'.format(self.dataset_name))
+                    self.saver.save(self.session, 'checkpoint/ImageGAN{}/model.ckpt'.format(self.dataset_name),
                                     global_step=training_step)
                     print "***CHECKPOINT SAVED***"
                 training_step += 1
@@ -210,54 +200,36 @@ class PrGAN:
     def generator(self, z_enc, train):
         with tf.variable_scope('gan'):
             base_filters = self.d_size
-            h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*4*base_filters, scope='g_f0')
-            h0 = tf.reshape(h0, [self.batch_size, 4, 4, 4, base_filters])
+            h0 = ops.linear(z_enc[:, 0:(self.z_size-1)], self.z_size-1, 4*4*base_filters, scope='g_f0')
+            h0 = tf.reshape(h0, [self.batch_size, 4, 4, base_filters])
             h0 = tf.nn.relu(self.g_bn0(h0, train))
-            h1 = ops.deconv3d(h0, [self.batch_size, 8, 8, 8, base_filters/2], name='g_h1')
+            h1 = ops.deconv2d(h0, [self.batch_size, 8, 8, base_filters/2], name='g_h1')
             h1 = tf.nn.relu(self.g_bn1(h1, train))
-            h2 = ops.deconv3d(h1, [self.batch_size, 16, 16, 16, base_filters/4], name='g_h2')
+            h2 = ops.deconv2d(h1, [self.batch_size, 16, 16, base_filters/4], name='g_h2')
             h2 = tf.nn.relu(self.g_bn2(h2, train))
-            h3 = ops.deconv3d(h2, [self.batch_size, 32, 32, 32, 1], name='g_h3')
-            h3 = tf.nn.sigmoid(h3)
-            self.voxels = tf.reshape(h3, [64, 32, 32, 32])
-            v = z_enc[:, self.z_size-1]
-
-            rendered_imgs = []
-            for i in xrange(self.batch_size):
-                img = ops.project(ops.transform_volume(self.voxels[i], ops.rot_matrix(v[i])), self.tau)
-                rendered_imgs.append(img)
-
-            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
-        return self.final_imgs
+            h3 = ops.deconv2d(h2, [self.batch_size, 32, 32, 1], name='g_h3')
+            self.simages = tf.nn.sigmoid(h3)
+        return tf.reshape(self.simages, [self.batch_size, 32, 32, 1])
 
     def sample (self, n_batches):
         self.session.run(tf.initialize_all_variables())
         self.load()
-        all_voxels = []
-        all_imgs = []
+        all_images = []
         for i in xrange(n_batches):
             batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
-            voxels = self.voxels.eval(session=self.session,
+            simages = self.simages.eval(session=self.session,
                                       feed_dict={self.z: batch_z, self.train_flag: False})
-            imgs = self.final_imgs.eval(session=self.session,
-                                      feed_dict={self.z: batch_z, self.train_flag: False})
-            all_voxels.append(np.array(voxels))
-            all_imgs.append(np.array(imgs))
-        all_voxels = np.concatenate(all_voxels, axis=0)
-        all_imgs = np.concatenate(all_imgs, axis=0)
-        print all_voxels.shape
-        ops.save_voxels(all_voxels, "results/PrGAN{}".format(self.dataset_name))
-        ops.save_separate_images(all_imgs, "results/PrGAN{}".format(self.dataset_name))
-
+            all_images.append(np.array(simages))
+        all_images = np.concatenate(all_images, axis=0)
+        ops.save_separate_images(all_images, "results/ImageGAN{}".format(self.dataset_name))
 
 def main():
     args = parser.parse_args()
-    rgan = PrGAN(n_iterations=args.epochs, batch_size=args.batch_size, dataset=args.dataset)
+    rgan = ImageGAN(n_iterations=args.epochs, batch_size=args.batch_size, dataset=args.dataset)
     if args.train:
         rgan.train()
     else:
         rgan.sample(2)
-
 
 if __name__ == '__main__':
     main()

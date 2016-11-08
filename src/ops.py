@@ -339,6 +339,12 @@ def alphanum_key(s):
     return [tryint(c) for c in re.split('([0-9]+)', s)]
 
 
+def save_separate_images(images, folder):
+    basename = "/image{}.png"
+    for i in range(images.shape[0]):
+        mpimg.imsave(folder+basename.format(i), images[i, :, :, 0], cmap='gray')
+
+
 def save_images(images, size, image_path):
     return imsave(inverse_transform(images), size, image_path)
 
