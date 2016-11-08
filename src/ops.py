@@ -320,7 +320,7 @@ def load_voxelbatch(voxel_paths):
 
 
 def save_voxels(voxels, folder):
-    basename="/chair{}.npy"
+    basename="/volume{}.npy"
     for i in range(voxels.shape[0]):
         np.save(folder+basename.format(i), voxels[i, :, :, :])
 

@@ -46,11 +46,11 @@ class PointCloudViewer(GLWindow):
 
     def keyboard(self, k, x, y):
         if k == '.':
-            self.threshold += 0.05
+            self.threshold += 0.01
             np.clip(self.threshold, 0, 1)
             self.point_cloud = volume_to_points(self.volume, self.threshold)
         elif k == ',':
-            self.threshold -= 0.05
+            self.threshold -= 0.01
             np.clip(self.threshold, 0, 1)
             self.point_cloud = volume_to_points(self.volume, self.threshold)
 

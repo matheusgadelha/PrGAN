@@ -6,6 +6,7 @@ import matplotlib.image as mpimg
 import numpy as np
 import sys
 import glob
+import os
 
 def rot(t, p=0.0):
     theta = t
@@ -74,7 +75,9 @@ if __name__ == '__main__':
         i = 0
         for t in np.linspace(0, 2*np.pi, 9):
             img = project(transform_volume(vs, rot(t)), 10)
-            mpimg.imsave("{}.v{}.png".format(path, i), img, cmap='gray')
+            imgpath = "{}.v{}.png".format(path, i)
+            mpimg.imsave(imgpath, img, cmap='gray')
+            os.system("mogrify -alpha off {}".format(imgpath))
             i+=1
         progress(count, total)
         count += 1

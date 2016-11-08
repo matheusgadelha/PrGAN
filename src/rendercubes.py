@@ -20,8 +20,7 @@ parser.add_argument("-t", "--theta", type=int, help="Number of different horizon
 parser.add_argument("-c", "--colors", type=int, help="Number of different random color combinations.", default=5)
 parser.add_argument("-s", "--size", type=int, help="Image size (it is a square image).", default=64)
 parser.add_argument("--train", dest='train', action='store_true')
-parser.add_argument("--gan", dest='gan', action='store_true')
-parser.set_defaults(test=False)
+parser.set_defaults(train=False)
 
 
 class Cube:

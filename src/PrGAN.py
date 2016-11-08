@@ -23,7 +23,7 @@ def create_folder(path):
         os.makedirs(path)
         print "Done."
 
-class VoxelGAN:
+class PrGAN:
 
     def __init__(self, sess=tf.Session(), image_size=(32, 32), z_size=201,
                  n_iterations=50, dataset="None", batch_size=64, lrate=0.002, d_size=64):
@@ -59,7 +59,7 @@ class VoxelGAN:
         self.history["discriminator_fake"] = []
 
         with tf.variable_scope('gan'):
-            self.images = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], image_size[1]],
+            self.images = tf.placeholder(tf.float32, shape=[batch_size, image_size[0], image_size[1], 1],
                                          name='final_image')
             self.z = tf.placeholder(tf.float32, shape=[batch_size, self.z_size], name='z')
 
@@ -95,7 +95,7 @@ class VoxelGAN:
 
     def load(self):
         ckpt_folder = "checkpoint"
-        ckpt = tf.train.get_checkpoint_state(os.path.join(ckpt_folder, "VoxelGAN"+self.dataset_name))
+        ckpt = tf.train.get_checkpoint_state(os.path.join(ckpt_folder, "PrGAN"+self.dataset_name))
         if ckpt and ckpt.model_checkpoint_path:
             print "Loading previous model..."
             self.saver.restore(self.session, ckpt.model_checkpoint_path)
@@ -108,7 +108,7 @@ class VoxelGAN:
             print "No GAN training files found. Training aborted. =("
             return
 
-        dataset_files = glob.glob("data/"+self.dataset_name+"/*.npy")
+        dataset_files = glob.glob("data/"+self.dataset_name+"/*.png")
         dataset_files = np.array(dataset_files)
         n_files = dataset_files.shape[0]
         sample_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
@@ -123,8 +123,8 @@ class VoxelGAN:
 
             for batch_i in xrange(n_batches):
                 idxs_i = rand_idxs[batch_i * self.batch_size: (batch_i + 1) * self.batch_size]
-                #imgs_batch = ops.load_imgbatch(dataset_files[idxs_i], color=False)
-                imgs_batch = ops.load_voxelbatch(dataset_files[idxs_i])
+                imgs_batch = ops.load_imgbatch(dataset_files[idxs_i], color=False)
+                #imgs_batch = ops.load_voxelbatch(dataset_files[idxs_i])
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
 
                 dloss_fake = self.D_fake.eval(session=self.session, feed_dict={self.z: batch_z, self.train_flag: False})
@@ -156,7 +156,12 @@ class VoxelGAN:
                 if train_discriminator:
                     print "***Discriminator trained.***"
                     self.session.run(self.D_optim, feed_dict={self.images: imgs_batch, self.z: batch_z, self.train_flag: True})
+                # Update generator
+                #if dacc > 0.9:
+                #    self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z})
+                #if dacc > margin + 1.0:
                 self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
+                #self.session.run(self.G_optim, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
 
                 if batch_i % 50 == 0:
                     rendered_images = self.G.eval(session=self.session, feed_dict={self.z: sample_z, self.images: imgs_batch, self.train_flag: False})
@@ -165,12 +170,15 @@ class VoxelGAN:
                     voxels = self.voxels.eval(session=self.session, feed_dict={self.z: sample_z, self.images: imgs_batch, self.train_flag: False})
                     voxels = np.array(voxels)
 
-                    create_folder("results/VoxelGAN{}".format(self.dataset_name))
-                    ops.save_voxels(voxels, "results/VoxelGAN{}".format(self.dataset_name))
+                    create_folder("results/PrGAN{}".format(self.dataset_name))
+                    ops.save_images(rendered_images, [8, 8],
+                                    "results/PrGAN{}/{}.png".format(self.dataset_name, epoch*n_batches+batch_i))
+                    ops.save_images(imgs_batch, [8, 8], "sanity_chairs.png")
+                    ops.save_voxels(voxels, "results/PrGAN{}".format(self.dataset_name))
 
                     print "Saving checkpoint..."
-                    create_folder('checkpoint/VoxelGAN{}'.format(self.dataset_name))
-                    self.saver.save(self.session, 'checkpoint/VoxelGAN{}/model.ckpt'.format(self.dataset_name),
+                    create_folder('checkpoint/PrGAN{}'.format(self.dataset_name))
+                    self.saver.save(self.session, 'checkpoint/PrGAN{}/model.ckpt'.format(self.dataset_name),
                                     global_step=training_step)
                     print "***CHECKPOINT SAVED***"
                 training_step += 1
@@ -187,12 +195,12 @@ class VoxelGAN:
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        reshaped_img = tf.reshape(image, [self.batch_size, self.image_size[0], self.image_size[1], self.image_size[1], 1])
-        h0 = ops.conv3d(reshaped_img, self.d_size, name='d_h0_conv')
+        reshaped_img = tf.reshape(image, [self.batch_size, self.image_size[0], self.image_size[1], 1])
+        h0 = ops.conv2d(reshaped_img, self.d_size, name='d_h0_conv')
         h0 = ops.lrelu(self.d_bn0(h0, train))
-        h1 = ops.conv3d(h0, self.d_size*2, name='d_h1_conv')
+        h1 = ops.conv2d(h0, self.d_size*2, name='d_h1_conv')
         h1 = ops.lrelu(self.d_bn1(h1, train))
-        h2 = ops.conv3d(h1, self.d_size*4, name='d_h2_conv')
+        h2 = ops.conv2d(h1, self.d_size*4, name='d_h2_conv')
         h2_tensor = ops.lrelu(self.d_bn2(h2, train))
         h2 = tf.reshape(h2_tensor, [self.batch_size, -1])
         h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
@@ -210,8 +218,17 @@ class VoxelGAN:
             h2 = ops.deconv3d(h1, [self.batch_size, 16, 16, 16, base_filters/4], name='g_h2')
             h2 = tf.nn.relu(self.g_bn2(h2, train))
             h3 = ops.deconv3d(h2, [self.batch_size, 32, 32, 32, 1], name='g_h3')
-            self.voxels = tf.nn.sigmoid(h3)
-        return self.voxels
+            h3 = tf.nn.sigmoid(h3)
+            self.voxels = tf.reshape(h3, [64, 32, 32, 32])
+            v = z_enc[:, self.z_size-1]
+
+            rendered_imgs = []
+            for i in xrange(self.batch_size):
+                img = ops.project(ops.transform_volume(self.voxels[i], ops.rot_matrix(v[i])), self.tau)
+                rendered_imgs.append(img)
+
+            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
+        return self.final_imgs
 
     def sample (self, n_batches):
         self.session.run(tf.initialize_all_variables())
@@ -224,15 +241,17 @@ class VoxelGAN:
             all_voxels.append(np.array(voxels))
         all_voxels = np.concatenate(all_voxels, axis=0)
         print all_voxels.shape
-        ops.save_voxels(all_voxels, "results/VoxelGAN{}".format(self.dataset_name))
+        ops.save_voxels(all_voxels, "results/PrGAN{}".format(self.dataset_name))
+
 
 def main():
     args = parser.parse_args()
-    rgan = VoxelGAN(n_iterations=args.epochs, batch_size=args.batch_size, dataset=args.dataset)
+    rgan = PrGAN(n_iterations=args.epochs, batch_size=args.batch_size, dataset=args.dataset)
     if args.train:
         rgan.train()
     else:
         rgan.sample(2)
+
 
 if __name__ == '__main__':
     main()
