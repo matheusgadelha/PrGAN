@@ -185,12 +185,51 @@ def volume_to_points(volume, threshold=0, dim=[2., 2., 2.]):
                     points.append(pos)
     return points
 
+def volume_to_cubes(volume, threshold=0, dim=[2., 2., 2.]):
+    o = np.array([-dim[0]/2., -dim[1]/2., -dim[2]/2.])
+    step = np.array([dim[0]/volume.shape[0], dim[1]/volume.shape[1], dim[2]/volume.shape[2]])
+    points = []
+    faces = []
+    for x in range(volume.shape[0]):
+        for y in range(volume.shape[1]):
+            for z in range(volume.shape[2]):
+                pos = o + np.array([x, y, z]) * step
+                if volume[x, y, z] > threshold:
+                    vidx = len(points)+1
+                    POS = pos + step
+                    xx = pos[0]
+                    yy = pos[1]
+                    zz = pos[2]
+                    XX = POS[0]
+                    YY = POS[1]
+                    ZZ = POS[2]
+                    points.append(np.array([xx, yy, zz]))
+                    points.append(np.array([xx, YY, zz]))
+                    points.append(np.array([XX, YY, zz]))
+                    points.append(np.array([XX, yy, zz]))
+                    points.append(np.array([xx, yy, ZZ]))
+                    points.append(np.array([xx, YY, ZZ]))
+                    points.append(np.array([XX, YY, ZZ]))
+                    points.append(np.array([XX, yy, ZZ]))
+                    faces.append(np.array([vidx, vidx+1, vidx+2, vidx+3]))
+                    faces.append(np.array([vidx, vidx+4, vidx+5, vidx+1]))
+                    faces.append(np.array([vidx, vidx+3, vidx+7, vidx+4]))
+                    faces.append(np.array([vidx+6, vidx+2, vidx+1, vidx+5]))
+                    faces.append(np.array([vidx+6, vidx+5, vidx+4, vidx+7]))
+                    faces.append(np.array([vidx+6, vidx+7, vidx+3, vidx+2]))
+    return points, faces
 
 def write_points_obj(path, points):
     f = open(path, 'w')
     for p in points:
         f.write("v {} {} {}\n".format(p[0], p[1], p[2]))
 
+def write_cubes_obj(path, points, faces):
+    f = open(path, 'w')
+    for p in points:
+      f.write("v {} {} {}\n".format(p[0], p[1], p[2]))
+    for q in faces:
+      f.write("f {} {} {} {}\n".format(q[0], q[1], q[2], q[3]))
 
 if __name__ == '__main__':
     mesh_files = glob.glob("models/chairs/*.off")
