@@ -185,18 +185,31 @@ def volume_to_points(volume, threshold=0, dim=[2., 2., 2.]):
                     points.append(pos)
     return points
 
+def volume_to_conf(volume, dim=[2., 2., 2.]):
+    o = np.array([-dim[0]/2., -dim[1]/2., -dim[2]/2.])
+    step = np.array([dim[0]/volume.shape[0], dim[1]/volume.shape[1], dim[2]/volume.shape[2]])
+    points = []
+    conf = []
+    for x in range(3,volume.shape[0]-3):
+        for y in range(3,volume.shape[1]-3):
+            for z in range(3,volume.shape[2]-3):
+                pos = o + np.array([x, y, z]) * step
+                points.append(pos)
+                conf.append(volume[x, y, z])
+    return points, conf
+
 def volume_to_cubes(volume, threshold=0, dim=[2., 2., 2.]):
     o = np.array([-dim[0]/2., -dim[1]/2., -dim[2]/2.])
     step = np.array([dim[0]/volume.shape[0], dim[1]/volume.shape[1], dim[2]/volume.shape[2]])
     points = []
     faces = []
-    for x in range(volume.shape[0]):
-        for y in range(volume.shape[1]):
-            for z in range(volume.shape[2]):
+    for x in range(1, volume.shape[0]-1):
+        for y in range(1, volume.shape[1]-1):
+            for z in range(1, volume.shape[2]-1):
                 pos = o + np.array([x, y, z]) * step
                 if volume[x, y, z] > threshold:
                     vidx = len(points)+1
-                    POS = pos + step
+                    POS = pos + step*0.95
                     xx = pos[0]
                     yy = pos[1]
                     zz = pos[2]
@@ -230,6 +243,13 @@ def write_cubes_obj(path, points, faces):
       f.write("v {} {} {}\n".format(p[0], p[1], p[2]))
     for q in faces:
       f.write("f {} {} {} {}\n".format(q[0], q[1], q[2], q[3]))
+
+def write_conf_obj(path, points, conf):
+    f = open(path, 'w')
+    for p in points:
+      f.write("v {} {} {}\n".format(p[0], p[1], p[2]))
+    for c in conf:
+      f.write("vc {}\n".format(c))
 
 if __name__ == '__main__':
     mesh_files = glob.glob("models/chairs/*.off")
