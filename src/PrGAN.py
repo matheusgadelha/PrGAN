@@ -1,5 +1,4 @@
 import tensorflow as tf
-
 import numpy as np
 import ops
 import glob
@@ -8,10 +7,14 @@ import argparse
 
 parser = argparse.ArgumentParser(description='This program trains a PrGAN model.')
 parser.add_argument("-e", "--epochs", type=int, help="Number training epochs.", default=50)
+parser.add_argument("-ims", "--image_size", type=int, help="Image size (single dimension).", default=32)
 parser.add_argument("-bs", "--batch_size", type=int, help="Minibatch size.", default=64)
 parser.add_argument("-d", "--dataset", type=str,
                     help="Dataset name. There must be a folder insde of the data folder with the same name.",
                     default="chairs_canonical")
+parser.add_argument("-z", "--encoding", type=str,
+                    help="Path to a .npy file containing an encoding to generate shapes.",
+                    default="None")
 parser.add_argument("--train", dest='train', action='store_true')
 parser.set_defaults(train=False)
 
@@ -235,8 +238,10 @@ class PrGAN:
         self.load()
         all_voxels = []
         all_imgs = []
+        all_zs = []
         for i in xrange(n_batches):
             batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_size])
+            all_zs.append(batch_z)
             voxels = self.voxels.eval(session=self.session,
                                       feed_dict={self.z: batch_z, self.train_flag: False})
             imgs = self.final_imgs.eval(session=self.session,
@@ -245,18 +250,37 @@ class PrGAN:
             all_imgs.append(np.array(imgs))
         all_voxels = np.concatenate(all_voxels, axis=0)
         all_imgs = np.concatenate(all_imgs, axis=0)
+        all_zs = np.vstack(all_zs)
         print all_voxels.shape
+        np.save("results/PrGAN{}".format(self.dataset_name), all_zs)
         ops.save_voxels(all_voxels, "results/PrGAN{}".format(self.dataset_name))
         ops.save_separate_images(all_imgs, "results/PrGAN{}".format(self.dataset_name))
+
+    def test (self, encs):
+        self.session.run(tf.initialize_all_variables())
+        self.load()
+        z = np.load(encs)
+        voxels = self.voxels.eval(session=self.session,
+                                    feed_dict={self.z: z, self.train_flag: False})
+        imgs = self.final_imgs.eval(session=self.session,
+                                    feed_dict={self.z: z, self.train_flag: False})
+        create_folder("results/PrGAN{}".format(self.dataset_name))
+        ops.save_voxels(voxels, "results/PrGAN{}".format(self.dataset_name))
+        ops.save_separate_images(imgs, "results/PrGAN{}".format(self.dataset_name))
 
 
 def main():
     args = parser.parse_args()
-    rgan = PrGAN(n_iterations=args.epochs, batch_size=args.batch_size, dataset=args.dataset)
+    rgan = PrGAN(n_iterations=args.epochs, 
+            batch_size=args.batch_size, 
+            image_size=(args.image_size, args.image_size),
+            dataset=args.dataset)
     if args.train:
         rgan.train()
+    elif args.encoding != "None":
+        rgan.test(args.encoding)
     else:
-        rgan.sample(2)
+        rgan.sample(1)
 
 
 if __name__ == '__main__':
