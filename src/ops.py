@@ -74,7 +74,7 @@ def grid_coord(h, w, d):
     return g
 
 
-def transform_volume(v, t):
+def transform_volume(v, t, size=32):
     height = int(v.get_shape()[0])
     width = int(v.get_shape()[1])
     depth = int(v.get_shape()[2])
@@ -92,7 +92,7 @@ def transform_volume(v, t):
     zs_t = (idxs_f[:, 2] + 1.0) * float(depth) / 2.0
 
     idxs = tf.cast(tf.pack([xs_t, ys_t, zs_t], axis=1), 'int32')
-    idxs = tf.clip_by_value(idxs, 0, 32)
+    idxs = tf.clip_by_value(idxs, 0, size)
     idxs = tf.expand_dims(idxs, 0)
 
     return tf.reshape(gather_nd(v, idxs), v.get_shape())
