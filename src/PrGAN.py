@@ -37,7 +37,7 @@ class PrGAN:
         self.lrate = lrate
         self.session = sess
         self.base_dim = 512
-        self.d_size = 256
+        self.d_size = 128
         self.z_size = z_size
         self.tau = 1
         self.dataset_name = dataset
@@ -55,6 +55,7 @@ class PrGAN:
         self.d_bn0 = ops.BatchNormalization([self.d_size], 'd_bn0')
         self.d_bn1 = ops.BatchNormalization([self.d_size*2], 'd_bn1')
         self.d_bn2 = ops.BatchNormalization([self.d_size*4], 'd_bn2')
+        self.d_bn3 = ops.BatchNormalization([self.d_size*8], 'd_bn2')
 
         self.history = {}
         self.history["generator"] = []
@@ -82,7 +83,7 @@ class PrGAN:
             dr_mean, dr_var = tf.nn.moments(self.D_stats_real, axes=[0])
             dl_mean, dl_var = tf.nn.moments(self.D_stats_fake, axes=[0])
             self.G_loss = ops.l2(dr_mean, dl_mean)
-            self.G_loss += ops.l2(dr_var, dl_var)
+            #self.G_loss += ops.l2(dr_var, dl_var)
             #print self.G_loss.get_shape()
             self.D_loss = self.D_loss_real + self.D_loss_fake
 
@@ -90,7 +91,7 @@ class PrGAN:
             self.D_vars = [v for v in allvars if 'd_' in v.name]
             self.G_vars = [v for v in allvars if 'g_' in v.name]
 
-            self.D_optim = tf.train.AdamOptimizer(1e-4, beta1=0.5).minimize(self.D_loss, var_list=self.D_vars)
+            self.D_optim = tf.train.AdamOptimizer(1e-5, beta1=0.5).minimize(self.D_loss, var_list=self.D_vars)
             self.G_optim = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss, var_list=self.G_vars)
             self.G_optim_classic = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss_classic, var_list=self.G_vars)
 
@@ -164,6 +165,7 @@ class PrGAN:
                 #    self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z})
                 #if dacc > margin + 1.0:
                 self.session.run(self.G_optim_classic, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
+                self.session.run(self.G_optim, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
                 #self.session.run(self.G_optim, feed_dict={self.z: batch_z, self.images: imgs_batch, self.train_flag: True})
 
                 if batch_i % 50 == 0:
@@ -204,11 +206,13 @@ class PrGAN:
         h1 = ops.conv2d(h0, self.d_size*2, name='d_h1_conv')
         h1 = ops.lrelu(self.d_bn1(h1, train))
         h2 = ops.conv2d(h1, self.d_size*4, name='d_h2_conv')
-        h2_tensor = ops.lrelu(self.d_bn2(h2, train))
-        h2 = tf.reshape(h2_tensor, [self.batch_size, -1])
-        h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
+        h2 = ops.lrelu(self.d_bn2(h2, train))
+        h3 = ops.conv2d(h2, self.d_size*8, name='d_h3_conv')
+        h3_tensor = ops.lrelu(self.d_bn3(h3, train))
+        h3 = tf.reshape(h3_tensor, [self.batch_size, -1])
+        h4 = ops.linear(h3, h3.get_shape()[1], 1, scope='d_h5_lin')
 
-        return tf.nn.sigmoid(h3), h3, h2_tensor
+        return tf.nn.sigmoid(h4), h4, h3_tensor
 
     def generator(self, z_enc, train):
         with tf.variable_scope('gan'):
@@ -221,16 +225,19 @@ class PrGAN:
             h2 = ops.deconv3d(h1, [self.batch_size, 16, 16, 16, base_filters/4], name='g_h2')
             h2 = tf.nn.relu(self.g_bn2(h2, train))
             h3 = ops.deconv3d(h2, [self.batch_size, 32, 32, 32, 1], name='g_h3')
-            h3 = tf.nn.sigmoid(h3)
-            self.voxels = tf.reshape(h3, [64, 32, 32, 32])
+            h3 = tf.nn.relu(self.g_bn3(h3, train))
+            h4 = ops.deconv3d(h3, [self.batch_size, 64, 64, 64, 1], name='g_h4')
+            h4 = tf.nn.sigmoid(h4)
+            self.voxels = tf.reshape(h4, [64, 64, 64, 64])
             v = z_enc[:, self.z_size-1]
 
             rendered_imgs = []
             for i in xrange(self.batch_size):
-                img = ops.project(ops.transform_volume(self.voxels[i], ops.rot_matrix(v[i])), self.tau)
+                img = ops.project(ops.transform_volume(self.voxels[i], ops.rot_matrix(v[i]), size=self.image_size[0]),
+                        self.tau)
                 rendered_imgs.append(img)
 
-            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 32, 32, 1])
+            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 64, 64, 1])
         return self.final_imgs
 
     def sample (self, n_batches):
