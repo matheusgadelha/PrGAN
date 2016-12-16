@@ -99,7 +99,7 @@ def center_samples(s):
     return s-np.mean(s, 0)
 
 
-def voxelize(mesh, size=np.array([32., 32., 32.]), dims=np.array([2.5, 2.5, 2.5])):
+def voxelize(mesh, size=np.array([64., 64., 64.]), dims=np.array([2.5, 2.5, 2.5])):
 
     xs = np.linspace(-dims[0]/2., dims[0]/2., size[0]+1)
     ys = np.linspace(-dims[1]/2., dims[1]/2., size[1]+1)
@@ -249,7 +249,7 @@ def write_conf_obj(path, points, conf):
     for p in points:
       f.write("v {} {} {}\n".format(p[0], p[1], p[2]))
     for c in conf:
-      f.write("vc {}\n".format(c))
+      f.write("vc {}\n".format(c[0]))
 
 if __name__ == '__main__':
     mesh_files = glob.glob("models/chairs/*.off")
