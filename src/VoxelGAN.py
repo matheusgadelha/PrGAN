@@ -8,7 +8,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='This program trains a PrGAN model.')
 parser.add_argument("-e", "--epochs", type=int, help="Number training epochs.", default=50)
-parser.add_argument("-bs", "--batch_size", type=int, help="Minibatch size.", default=64)
+parser.add_argument("-bs", "--batch_size", type=int, help="Minibatch size.", default=32)
 parser.add_argument("-d", "--dataset", type=str,
                     help="Dataset name. There must be a folder insde of the data folder with the same name.",
                     default="chairs_canonical")
@@ -25,8 +25,8 @@ def create_folder(path):
 
 class VoxelGAN:
 
-    def __init__(self, sess=tf.Session(), image_size=(32, 32), z_size=201,
-                 n_iterations=50, dataset="None", batch_size=64, lrate=0.002, d_size=64):
+    def __init__(self, sess=tf.Session(), image_size=(64, 64), z_size=201,
+                 n_iterations=50, dataset="None", batch_size=16, lrate=0.002, d_size=64):
 
         self.image_size = image_size
         self.n_iterations = n_iterations
@@ -34,7 +34,7 @@ class VoxelGAN:
         self.lrate = lrate
         self.session = sess
         self.base_dim = 512
-        self.d_size = 256
+        self.d_size = 128
         self.z_size = z_size
         self.tau = 1
         self.dataset_name = dataset
@@ -52,6 +52,7 @@ class VoxelGAN:
         self.d_bn0 = ops.BatchNormalization([self.d_size], 'd_bn0')
         self.d_bn1 = ops.BatchNormalization([self.d_size*2], 'd_bn1')
         self.d_bn2 = ops.BatchNormalization([self.d_size*4], 'd_bn2')
+        self.d_bn3 = ops.BatchNormalization([self.d_size*8], 'd_bn3')
 
         self.history = {}
         self.history["generator"] = []
@@ -193,11 +194,13 @@ class VoxelGAN:
         h1 = ops.conv3d(h0, self.d_size*2, name='d_h1_conv')
         h1 = ops.lrelu(self.d_bn1(h1, train))
         h2 = ops.conv3d(h1, self.d_size*4, name='d_h2_conv')
-        h2_tensor = ops.lrelu(self.d_bn2(h2, train))
-        h2 = tf.reshape(h2_tensor, [self.batch_size, -1])
-        h3 = ops.linear(h2, h2.get_shape()[1], 1, scope='d_h5_lin')
+        h2 = ops.lrelu(self.d_bn2(h2, train))
+        h3 = ops.conv3d(h2, self.d_size*8, name='d_h3_conv')
+        h3 = ops.lrelu(self.d_bn3(h3, train))
+        h3 = tf.reshape(h3, [self.batch_size, -1])
+        h4 = ops.linear(h3, h3.get_shape()[1], 1, scope='d_h5_lin')
 
-        return tf.nn.sigmoid(h3), h3, h2_tensor
+        return tf.nn.sigmoid(h4), h4, h2
 
     def generator(self, z_enc, train):
         with tf.variable_scope('gan'):
@@ -209,8 +212,10 @@ class VoxelGAN:
             h1 = tf.nn.relu(self.g_bn1(h1, train))
             h2 = ops.deconv3d(h1, [self.batch_size, 16, 16, 16, base_filters/4], name='g_h2')
             h2 = tf.nn.relu(self.g_bn2(h2, train))
-            h3 = ops.deconv3d(h2, [self.batch_size, 32, 32, 32, 1], name='g_h3')
-            self.voxels = tf.nn.sigmoid(h3)
+            h3 = ops.deconv3d(h2, [self.batch_size, 32, 32, 32, base_filters/8], name='g_h3')
+            h3 = tf.nn.relu(self.g_bn3(h3, train))
+            h4 = ops.deconv3d(h3, [self.batch_size, 64, 64, 64, 1], name='g_h4')
+            self.voxels = tf.nn.sigmoid(h4)
         return self.voxels
 
     def sample (self, n_batches):
