@@ -32,11 +32,12 @@ def flatten(t) : return tf.reshape(t, [1, -1])
 
 
 def rot_matrix(s):
-    i = tf.cast((s+1)*4, 'int32')
-    vp = tf.constant([0, np.pi/4.0, np.pi/2.0, 3*np.pi/4.0, np.pi, 5*np.pi/4.0, 3*np.pi/2.0, 7*np.pi/4.0])
+    i = tf.cast((s+1)*4.5, 'int32')
+    vp = tf.constant([0, np.pi/4.0, np.pi/2.0, 3*np.pi/4.0, np.pi, 5*np.pi/4.0, 3*np.pi/2.0, 7*np.pi/4.0, np.pi/2.0])
+    hp = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, np.pi/2.0])
 
     theta = tf.gather(vp, i)
-    phi = 0.0
+    phi = tf.gather(hp, i)
 
     #theta = (s[0] + 1.0) * np.pi
     #phi = s[1] * np.pi/2.0
@@ -49,8 +50,8 @@ def rot_matrix(s):
     ry = [[cos_theta, 0, sin_theta], [0, 1, 0], [-sin_theta, 0, cos_theta]]
     rx = [[1, 0, 0], [0, cos_phi, -sin_phi], [0, sin_phi, cos_phi]]
 
-    #return tf.matmul(rx, ry)
-    return ry
+    return tf.matmul(rx, ry)
+    #return ry
 
 '''This is a hack. One day tensorflow will have gather_nd properly implemented with backprop.
 Until then, use this function'''
@@ -232,7 +233,7 @@ def conv3d(input_, output_dim, k_h=4, k_w=4, k_d=4, d_h=2, d_w=2, d_d=2, stddev=
 
 # From DCGAN tensrorflow implementation
 def deconv2d(input_, output_shape,
-             k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
+             k_h=4, k_w=4, d_h=2, d_w=2, stddev=0.02,
              name="deconv2d", with_w=False):
     with tf.variable_scope(name):
         # filter : [height, width, output_channels, in_channels]
@@ -283,7 +284,7 @@ def deconv3d(input_, output_shape,
 def l2norm_sqrd(a, b): return tf.reduce_sum(tf.pow(a-b, 2), 1)
 
 
-def l2(a, b): return tf.reduce_sum(tf.pow(a-b, 2))
+def l2(a, b): return tf.reduce_mean(tf.pow(a-b, 2))
 
 
 def show_graph_operations():

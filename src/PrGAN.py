@@ -39,7 +39,7 @@ class PrGAN:
         self.base_dim = 512
         self.d_size = 128
         self.z_size = z_size
-        self.tau = 1
+        self.tau = 0.5
         self.dataset_name = dataset
         #self.alpha = tf.constant(1e-6)
         self.alpha = tf.constant(0.0)
@@ -83,7 +83,8 @@ class PrGAN:
             dr_mean, dr_var = tf.nn.moments(self.D_stats_real, axes=[0])
             dl_mean, dl_var = tf.nn.moments(self.D_stats_fake, axes=[0])
             self.G_loss = ops.l2(dr_mean, dl_mean)
-            #self.G_loss += ops.l2(dr_var, dl_var)
+            self.G_loss += ops.l2(dr_var, dl_var)
+            #self.G_loss += self.G_loss_classic
             #print self.G_loss.get_shape()
             self.D_loss = self.D_loss_real + self.D_loss_fake
 
@@ -91,7 +92,7 @@ class PrGAN:
             self.D_vars = [v for v in allvars if 'd_' in v.name]
             self.G_vars = [v for v in allvars if 'g_' in v.name]
 
-            self.D_optim = tf.train.AdamOptimizer(1e-5, beta1=0.5).minimize(self.D_loss, var_list=self.D_vars)
+            self.D_optim = tf.train.AdamOptimizer(1e-4, beta1=0.5).minimize(self.D_loss, var_list=self.D_vars)
             self.G_optim = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss, var_list=self.G_vars)
             self.G_optim_classic = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss_classic, var_list=self.G_vars)
 
@@ -212,7 +213,7 @@ class PrGAN:
         h3 = tf.reshape(h3_tensor, [self.batch_size, -1])
         h4 = ops.linear(h3, h3.get_shape()[1], 1, scope='d_h5_lin')
 
-        return tf.nn.sigmoid(h4), h4, h3_tensor
+        return tf.nn.sigmoid(h4), h4, h0
 
     def generator(self, z_enc, train):
         with tf.variable_scope('gan'):
@@ -227,7 +228,7 @@ class PrGAN:
             h3 = ops.deconv3d(h2, [self.batch_size, 32, 32, 32, 1], name='g_h3')
             h3 = tf.nn.relu(self.g_bn3(h3, train))
             h4 = ops.deconv3d(h3, [self.batch_size, 64, 64, 64, 1], name='g_h4')
-            h4 = tf.nn.sigmoid(h4)
+            h4 = tf.nn.sigmoid(h4) * (1.0/self.tau)
             self.voxels = tf.reshape(h4, [64, 64, 64, 64])
             v = z_enc[:, self.z_size-1]
 
