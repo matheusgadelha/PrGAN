@@ -229,16 +229,16 @@ class PrGAN:
             h3 = tf.nn.relu(self.g_bn3(h3, train))
             h4 = ops.deconv3d(h3, [self.batch_size, 64, 64, 64, 1], name='g_h4')
             h4 = tf.nn.sigmoid(h4) * (1.0/self.tau)
-            self.voxels = tf.reshape(h4, [64, 64, 64, 64])
+            self.voxels = tf.reshape(h4, [self.batch_size, 64, 64, 64])
             v = z_enc[:, self.z_size-1]
 
             rendered_imgs = []
             for i in xrange(self.batch_size):
-                img = ops.project(ops.transform_volume(self.voxels[i], ops.rot_matrix(v[i]), size=self.image_size[0]),
+                img = ops.project(ops.transform_volume(self.voxels[i], ops.rot_matrix(v[i])),
                         self.tau)
                 rendered_imgs.append(img)
 
-            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [64, 64, 64, 1])
+            self.final_imgs = tf.reshape(tf.pack(rendered_imgs), [self.batch_size, 64, 64, 1])
         return self.final_imgs
 
     def sample (self, n_batches):
