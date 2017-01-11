@@ -75,34 +75,69 @@ def grid_coord(h, w, d):
     return g
 
 
-def transform_volume(v, t, size=32):
-    height = int(v.get_shape()[0])
-    width = int(v.get_shape()[1])
-    depth = int(v.get_shape()[2])
-    grid = grid_coord(height, width, depth)
-
-    xs = grid[0, :]
-    ys = grid[1, :]
-    zs = grid[2, :]
-
-    idxs_f = tf.transpose(tf.pack([xs, ys, zs]))
-    idxs_f = tf.matmul(idxs_f, t)
-
-    xs_t = (idxs_f[:, 0] + 1.0) * float(width) / 2.0
-    ys_t = (idxs_f[:, 1] + 1.0) * float(height) / 2.0
-    zs_t = (idxs_f[:, 2] + 1.0) * float(depth) / 2.0
-
-    idxs = tf.cast(tf.pack([xs_t, ys_t, zs_t], axis=1), 'int32')
-    idxs = tf.clip_by_value(idxs, 0, size)
-    idxs = tf.expand_dims(idxs, 0)
-
-    return tf.reshape(gather_nd(v, idxs), v.get_shape())
-
-
 def project(v, tau=1):
     p = tf.reduce_sum(v, 2)
     p = tf.ones_like(p) - tf.exp(-p*tau)
     return tf.reverse(tf.transpose(p), [True, False])
+
+
+def get_voxel_values(v, xs, ys, zs):
+    idxs = tf.cast(tf.pack([xs, ys, zs], axis=1), 'int32')
+    idxs = tf.clip_by_value(idxs, 0, v.get_shape()[0])
+    idxs = tf.expand_dims(idxs, 0)
+    return gather_nd(v, idxs)
+
+
+def resample_voxels(v, xs, ys, zs, method="trilinear"):
+    
+    if method == "trilinear":
+        floor_xs = tf.floor(tf.clip_by_value(xs, 0, 64))
+        floor_ys = tf.floor(tf.clip_by_value(ys, 0, 64))
+        floor_zs = tf.floor(tf.clip_by_value(zs, 0, 64))
+
+        ceil_xs = tf.ceil(tf.clip_by_value(xs, 0, 64))
+        ceil_ys = tf.ceil(tf.clip_by_value(ys, 0, 64))
+        ceil_zs = tf.ceil(tf.clip_by_value(zs, 0, 64))
+
+        final_value =( tf.abs((xs-floor_xs)*(ys-floor_ys)*(zs-floor_zs))*get_voxel_values(v, ceil_xs, ceil_ys, ceil_zs) + 
+                       tf.abs((xs-floor_xs)*(ys-floor_ys)*(zs-ceil_zs))*get_voxel_values(v, ceil_xs, ceil_ys, floor_zs) +
+                       tf.abs((xs-floor_xs)*(ys-ceil_ys)*(zs-floor_zs))*get_voxel_values(v, ceil_xs, floor_ys, ceil_zs) +
+                       tf.abs((xs-floor_xs)*(ys-ceil_ys)*(zs-ceil_zs))*get_voxel_values(v, ceil_xs, floor_ys, floor_zs) +
+                       tf.abs((xs-ceil_xs)*(ys-floor_ys)*(zs-floor_zs))*get_voxel_values(v, floor_xs, ceil_ys, ceil_zs) +
+                       tf.abs((xs-ceil_xs)*(ys-floor_ys)*(zs-ceil_zs))*get_voxel_values(v, floor_xs, ceil_ys, floor_zs) +
+                       tf.abs((xs-ceil_xs)*(ys-ceil_ys)*(zs-floor_zs))*get_voxel_values(v, floor_xs, floor_ys, ceil_zs) +
+                       tf.abs((xs-ceil_xs)*(ys-ceil_ys)*(zs-ceil_zs))*get_voxel_values(v, floor_xs, floor_ys, floor_zs)
+                     )
+        return final_value
+    
+    elif method == "nearest":
+        r_xs = tf.round(xs)
+        r_ys = tf.round(ys)
+        r_zs = tf.round(zs)
+        return get_voxel_values(v, r_xs, r_ys, r_zs)
+    
+    else:
+        raise NameError(method)
+  
+  
+def transform_volume(v, t):
+    height = int(v.get_shape()[0])
+    width = int(v.get_shape()[1])
+    depth = int(v.get_shape()[2])
+    grid = grid_coord(height, width, depth)
+    
+    xs = grid[0, :]
+    ys = grid[1, :]
+    zs = grid[2, :]
+    
+    idxs_f = tf.transpose(tf.pack([xs, ys, zs]))
+    idxs_f = tf.matmul(idxs_f, t)
+    
+    xs_t = (idxs_f[:, 0] + 1.0) * float(width) / 2.0
+    ys_t = (idxs_f[:, 1] + 1.0) * float(height) / 2.0
+    zs_t = (idxs_f[:, 2] + 1.0) * float(depth) / 2.0
+    
+    return tf.reshape(resample_voxels(v, xs_t, ys_t, zs_t, method='trilinear'), v.get_shape())
 
 
 class batch_norm_linear(object):
