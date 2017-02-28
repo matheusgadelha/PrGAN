@@ -9,12 +9,11 @@ parser = argparse.ArgumentParser(description='This program trains a PrGAN model.
 parser.add_argument("-e", "--epochs", type=int, help="Number training epochs.", default=50)
 parser.add_argument("-ims", "--image_size", type=int, help="Image size (single dimension).", default=32)
 parser.add_argument("-bs", "--batch_size", type=int, help="Minibatch size.", default=64)
-parser.add_argument("-d", "--dataset", type=str,
-                    help="Dataset name. There must be a folder insde of the data folder with the same name.",
-                    default="chairs_canonical")
-parser.add_argument("-z", "--encoding", type=str,
-                    help="Path to a .npy file containing an encoding to generate shapes.",
-                    default="None")
+add_argument = parser.add_argument("-d", "--dataset", type=str,
+                                   help="Dataset name. There must be a folder insde of the data folder with the same name.",
+                                   default="chairs_canonical")
+argument = parser.add_argument("-z", "--encoding", type=str,
+                               help="Path to a .npy file containing an encoding to generate shapes.", default="None")
 parser.add_argument("--train", dest='train', action='store_true')
 parser.set_defaults(train=False)
 
