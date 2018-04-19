@@ -1,4 +1,4 @@
-# PrGAN
+# Unsupervised 3D Shape Induction from 2D Views of Multiple Objects (3DV 2017)
 
 Dependencies
 -------------
